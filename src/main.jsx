@@ -56,8 +56,7 @@ function App() {
             <Route path="patients/:id" element={<PatientDetail />} />
             <Route path="patients/:id/edit" element={<PatientForm />} />
             <Route path="appointments" element={<Appointments />} />
-            <Route path="finance" element={<ComingSoon title="💰 Finance" />} />
-<Route path="tools" element={<ComingSoon title="🔧 Tools" />} />
+          
 
           </Route>
         </Routes>
