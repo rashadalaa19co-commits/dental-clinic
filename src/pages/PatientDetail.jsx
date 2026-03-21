@@ -97,6 +97,8 @@ export default function PatientDetail() {
   const [adding, setAdding] = useState(null);
   const [editing, setEditing] = useState({ type: null, idx: null });
   const [saving, setSaving] = useState(false);
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [showAddPhoto, setShowAddPhoto] = useState(false);
 
   const load = () => getPatients(user.uid).then(pts => setPatient(pts.find(p => p.id === id) || null));
   useEffect(() => { if (user) load(); }, [user, id]);
@@ -145,32 +147,48 @@ export default function PatientDetail() {
     await saveVisits(type, current);
   };
 
+  const handleAddPhoto = async () => {
+    if (!newPhotoUrl.trim()) return;
+    const current = patient.photos || [];
+    await updatePatient(user.uid, id, { ...patient, photos: [...current, newPhotoUrl.trim()] });
+    await load();
+    setNewPhotoUrl('');
+    setShowAddPhoto(false);
+  };
+
+  const handleDeletePhoto = async (idx) => {
+    if (!confirm('Delete this photo?')) return;
+    const current = [...(patient.photos || [])];
+    current.splice(idx, 1);
+    await updatePatient(user.uid, id, { ...patient, photos: current });
+    await load();
+  };
+
   if (!patient) return <div className={styles.loading}>Loading...</div>;
 
   const info = [
-    ['📞 Phone', patient.phone],
-    ['🎂 Age', patient.age],
-    ['💼 Occupation', patient.occupation],
-    ['🏷️ Type', patient.patientType],
-    ['😣 Complaint', patient.chiefComplaint],
-    ['🦷 Tooth', patient.tooth],
-    ['⚙️ Procedure', patient.procedure],
-    ['📅 Start', patient.dateStart],
-    ['📅 End', patient.dateEnd],
-    ['⚠️ Alert', patient.alert],
-    ['📊 Difficulty', patient.difficulty],
-    ['💊 Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : (Array.isArray(patient.dentalHistory) ? patient.dentalHistory.join(', ') : patient.dentalHistory)],
+    ['Phone', patient.phone],
+    ['Age', patient.age],
+    ['Occupation', patient.occupation],
+    ['Type', patient.patientType],
+    ['Complaint', patient.chiefComplaint],
+    ['Tooth', patient.tooth],
+    ['Procedure', patient.procedure],
+    ['Start', patient.dateStart],
+    ['End', patient.dateEnd],
+    ['Alert', patient.alert],
+    ['Difficulty', patient.difficulty],
+    ['Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : (Array.isArray(patient.dentalHistory) ? patient.dentalHistory.join(', ') : patient.dentalHistory)],
   ];
 
   const visitConfigs = [
-    { key:'operativeVisits', label:'🟡 Operative', color:'var(--operative)', fields:OPERATIVE_FIELDS },
-    { key:'surgeryVisits',   label:'🔴 Surgery',   color:'var(--surgery)',   fields:SURGERY_FIELDS },
-    { key:'prothVisits',     label:'🟣 Proth',     color:'var(--proth)',     fields:PROTH_FIELDS },
+    { key:'operativeVisits', label:'Operative', color:'var(--operative)', fields:OPERATIVE_FIELDS },
+    { key:'surgeryVisits',   label:'Surgery',   color:'var(--surgery)',   fields:SURGERY_FIELDS },
+    { key:'prothVisits',     label:'Proth',     color:'var(--proth)',     fields:PROTH_FIELDS },
   ];
 
   return (
     <div>
-      {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <button className={styles.backBtn} onClick={() => nav('/patients')}>Back</button>
@@ -189,7 +207,6 @@ export default function PatientDetail() {
         </div>
       </div>
 
-      {/* Info grid */}
       <div className={`card ${styles.infoCard}`}>
         <div className={styles.infoGrid}>
           {info.map(([label, val]) => val ? (
@@ -207,7 +224,6 @@ export default function PatientDetail() {
         )}
       </div>
 
-      {/* Visits - Adult only */}
       {patient.patientType === 'Adult' && (
         <>
           {/* ENDO */}
@@ -221,6 +237,7 @@ export default function PatientDetail() {
               </button>
             </div>
             {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
+            {(patient.endoVisits||[]).length === 0 && adding !== 'endo' && <p className={styles.noVisits}>No endo visits yet</p>}
             {(patient.endoVisits||[]).map((tooth,ti) => (
               <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
                 {editing.type === 'endoVisits' && editing.idx === ti ? (
@@ -261,7 +278,6 @@ export default function PatientDetail() {
                 )}
               </div>
             ))}
-            {(patient.endoVisits||[]).length === 0 && adding !== 'endo' && <p className={styles.noVisits}>No endo visits yet</p>}
           </div>
 
           {/* OTHER VISITS */}
@@ -286,20 +302,18 @@ export default function PatientDetail() {
                     {editing.type === cfg.key && editing.idx === i ? (
                       <VisitForm fields={cfg.fields} initial={v} onSave={(data) => handleEditVisit(cfg.key, data)} onCancel={() => setEditing({type:null,idx:null})}/>
                     ) : (
-                      <div>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                          <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-                            {cfg.fields.map(f => v[f.k] ? (
-                              <div key={f.k} style={{display:'flex',flexDirection:'column',gap:2}}>
-                                <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{f.l}</span>
-                                <span style={{fontSize:14,fontWeight:500}}>{v[f.k]}</span>
-                              </div>
-                            ) : null)}
-                          </div>
-                          <div style={{display:'flex',gap:6}}>
-                            <button onClick={() => setEditing({type:cfg.key,idx:i})} style={{padding:'4px 10px',background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Edit</button>
-                            <button onClick={() => handleDeleteVisit(cfg.key,i)} style={{padding:'4px 10px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'1px solid rgba(248,81,73,0.2)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Delete</button>
-                          </div>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
+                          {cfg.fields.map(f => v[f.k] ? (
+                            <div key={f.k} style={{display:'flex',flexDirection:'column',gap:2}}>
+                              <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{f.l}</span>
+                              <span style={{fontSize:14,fontWeight:500}}>{v[f.k]}</span>
+                            </div>
+                          ) : null)}
+                        </div>
+                        <div style={{display:'flex',gap:6}}>
+                          <button onClick={() => setEditing({type:cfg.key,idx:i})} style={{padding:'4px 10px',background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Edit</button>
+                          <button onClick={() => handleDeleteVisit(cfg.key,i)} style={{padding:'4px 10px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'1px solid rgba(248,81,73,0.2)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Delete</button>
                         </div>
                       </div>
                     )}
@@ -310,6 +324,49 @@ export default function PatientDetail() {
           })}
         </>
       )}
+
+      {/* PHOTOS */}
+      <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--accent)'}}>
+        <div className={styles.visitHeader}>
+          <span className={styles.visitLabel} style={{color:'var(--accent)'}}>📸 Case Photos</span>
+          <span className={styles.visitCount}>{(patient.photos||[]).length} photo{(patient.photos||[]).length !== 1 ? 's' : ''}</span>
+          <button className={styles.addVisitBtn} style={{color:'var(--accent)',borderColor:'var(--accent)'}}
+            onClick={() => setShowAddPhoto(s => !s)}>
+            {showAddPhoto ? 'Cancel' : '+ Add Photo'}
+          </button>
+        </div>
+
+        {showAddPhoto && (
+          <div style={{display:'flex',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',flexWrap:'wrap',alignItems:'flex-end'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minWidth:200}}>
+              <label style={{fontSize:12,color:'var(--muted)'}}>Google Drive Photo Link</label>
+              <input value={newPhotoUrl} onChange={e=>setNewPhotoUrl(e.target.value)} placeholder="Paste Google Drive link here..." style={{padding:'9px 12px'}}/>
+              <span style={{fontSize:11,color:'var(--muted)'}}>Google Drive → Right click photo → Share → Copy link</span>
+            </div>
+            <button onClick={handleAddPhoto} style={{padding:'9px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:14,fontWeight:600,cursor:'pointer'}}>Save</button>
+          </div>
+        )}
+
+        {(patient.photos||[]).length === 0 && !showAddPhoto && (
+          <p className={styles.noVisits}>No photos yet</p>
+        )}
+
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:12,marginTop:8}}>
+          {(patient.photos||[]).map((url, i) => (
+            <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1'}}>
+              <img src={url} alt={'Photo ' + (i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
+                onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
+              />
+              <div style={{display:'none',alignItems:'center',justifyContent:'center',height:'100%',background:'var(--surface2)',color:'var(--muted)',fontSize:12,flexDirection:'column',gap:8}}>
+                <span>🔗</span>
+                <a href={url} target="_blank" style={{color:'var(--accent)',fontSize:11}}>Open Link</a>
+              </div>
+              <button onClick={()=>handleDeletePhoto(i)} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',border:'none',borderRadius:'50%',width:24,height:24,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>X</button>
+              <a href={url} target="_blank" style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',borderRadius:6,padding:'2px 8px',fontSize:11,textDecoration:'none'}}>Open</a>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
