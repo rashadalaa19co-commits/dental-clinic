@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -11,7 +11,6 @@ import PatientDetail from './pages/PatientDetail';
 import Appointments from './pages/Appointments';
 import './styles/global.css';
 
-// Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
     navigator.serviceWorker.register('/sw.js').catch(console.error)
@@ -21,11 +20,23 @@ if ('serviceWorker' in navigator) {
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
   if (user === undefined) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'var(--muted)' }}>
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'white' }}>
       Loading...
     </div>
   );
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  return children;
+}
+
+function LoginRoute() {
+  const { user } = useAuth();
+  if (user === undefined) return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'white' }}>
+      Loading...
+    </div>
+  );
+  if (user) return <Navigate to="/" replace />;
+  return <Login />;
 }
 
 function App() {
@@ -33,7 +44,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<LoginRoute />} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="patients" element={<Patients />} />
