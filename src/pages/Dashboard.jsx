@@ -37,8 +37,7 @@ export default function Dashboard() {
 
   return (
     <div>
-
-     {access && !access.isActive && access.patientCount >= 0 && (
+      {access && !access.isActive && (
         <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:12,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div>
             <div style={{fontWeight:700,color:'var(--danger)',fontSize:15}}>🔒 Free Trial — {access.patientCount}/2 patients used</div>
@@ -61,10 +60,10 @@ export default function Dashboard() {
       <div className={styles.statsGrid}>
         {[
           { label: 'Total Patients', value: stats.total, color: 'var(--accent)', icon: '👥' },
-          { label: 'In Progress',    value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
-          { label: 'Done',           value: stats.done, color: 'var(--success)', icon: '✅' },
-          { label: 'Not Started',    value: stats.notStarted, color: 'var(--warning)', icon: '⏳' },
-          { label: "Today's Appts",  value: todayAppts.length, color: 'var(--proth)', icon: '📅' },
+          { label: 'In Progress', value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
+          { label: 'Done', value: stats.done, color: 'var(--success)', icon: '✅' },
+          { label: 'Not Started', value: stats.notStarted, color: 'var(--warning)', icon: '⏳' },
+          { label: "Today's Appts", value: todayAppts.length, color: 'var(--proth)', icon: '📅' },
         ].map(s => (
           <div key={s.label} className={styles.statCard}>
             <div className={styles.statIcon}>{s.icon}</div>
