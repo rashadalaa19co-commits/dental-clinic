@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -9,6 +9,8 @@ import Patients from './pages/Patients';
 import PatientForm from './pages/PatientForm';
 import PatientDetail from './pages/PatientDetail';
 import Appointments from './pages/Appointments';
+import Admin from './pages/Admin';
+import Locked from './pages/Locked';
 import './styles/global.css';
 
 if ('serviceWorker' in navigator) {
@@ -45,6 +47,8 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<LoginRoute />} />
+          <Route path="/locked" element={<ProtectedRoute><Locked /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
           <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route index element={<Dashboard />} />
             <Route path="patients" element={<Patients />} />
