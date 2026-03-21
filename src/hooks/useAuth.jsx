@@ -8,10 +8,18 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined);
 
   useEffect(() => {
-    getRedirectResult(auth)
-      .then(result => { if (result?.user) setUser(result.user); })
-      .catch(console.error);
-    return onAuthStateChanged(auth, u => setUser(u || null));
+    const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      getRedirectResult(auth)
+        .then(result => {
+          if (result?.user) setUser(result.user);
+        })
+        .catch(console.error);
+    }
+
+    const unsub = onAuthStateChanged(auth, u => setUser(u || null));
+    return () => unsub();
   }, []);
 
   const login = async () => {
