@@ -44,3 +44,6 @@
   .statsGrid { grid-template-columns: repeat(2, 1fr); }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+.cardHeader { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.cardHeader .sectionTitle { margin-bottom:0; }
