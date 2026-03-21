@@ -58,16 +58,7 @@ function App() {
             <Route path="appointments" element={<Appointments />} />
             <Route path="finance" element={<ComingSoon title="💰 Finance" />} />
 <Route path="tools" element={<ComingSoon title="🔧 Tools" />} />
-            function ComingSoon({ title }) {
-  return (
-    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'60vh',gap:16}}>
-      <div style={{fontSize:64}}>🚀</div>
-      <h1 style={{fontSize:28,fontWeight:800}}>{title}</h1>
-      <p style={{color:'var(--muted)',fontSize:16}}>Coming Soon...</p>
-      <p style={{color:'var(--muted)',fontSize:14}}>This feature is under development</p>
-    </div>
-  );
-}
+
           </Route>
         </Routes>
       </AuthProvider>
