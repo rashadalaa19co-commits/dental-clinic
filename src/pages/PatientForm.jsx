@@ -156,7 +156,13 @@ export default function PatientForm() {
     if (isEdit) {
       getPatients(user.uid).then(patients => {
         const p = patients.find(x => x.id === id);
-        if (p) setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
+        if (p) {
+          setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
+          setEndoRows(p.endoVisits || []);
+          setOperativeRows(p.operativeVisits || []);
+          setSurgeryRows(p.surgeryVisits || []);
+          setProthRows(p.prothVisits || []);
+        }
       });
     }
   }, [id]);
