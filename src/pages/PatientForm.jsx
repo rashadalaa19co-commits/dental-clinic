@@ -33,18 +33,15 @@ const emptyTooth = () => ({ toothName:'', diagnosis:'', clamp:'', referencePoint
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
   useEffect(() => {
     const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, []);
-
   const toggle = val => {
     if (selected.includes(val)) onChange(selected.filter(x => x !== val));
     else onChange([...selected, val]);
   };
-
   return (
     <div ref={ref} style={{position:'relative'}}>
       <div onClick={() => setOpen(o => !o)} style={{background:'var(--surface2)',border:'1px solid',borderColor:open?'var(--accent)':'var(--border)',borderRadius:'var(--radius-sm)',padding:'9px 12px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between',minHeight:42,flexWrap:'wrap',gap:6}}>
@@ -55,7 +52,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
             {selected.map(s => (
               <span key={s} style={{background:'rgba(0,212,255,0.15)',color:'var(--accent)',padding:'2px 8px',borderRadius:20,fontSize:12,display:'flex',alignItems:'center',gap:4}}>
                 {s}
-                <span onClick={e=>{e.stopPropagation();toggle(s);}} style={{cursor:'pointer',fontWeight:700,fontSize:14}}>×</span>
+                <span onClick={e=>{e.stopPropagation();toggle(s);}} style={{cursor:'pointer',fontWeight:700,fontSize:14}}>x</span>
               </span>
             ))}
           </div>
@@ -67,7 +64,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
           {options.map(opt => (
             <div key={opt} onClick={()=>toggle(opt)} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',cursor:'pointer',background:selected.includes(opt)?'rgba(0,212,255,0.08)':'transparent'}}>
               <div style={{width:18,height:18,borderRadius:4,border:selected.includes(opt)?'2px solid var(--accent)':'2px solid var(--border)',background:selected.includes(opt)?'var(--accent)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                {selected.includes(opt) && <span style={{color:'#000',fontSize:12,fontWeight:700}}>✓</span>}
+                {selected.includes(opt) && <span style={{color:'#000',fontSize:12,fontWeight:700}}>v</span>}
               </div>
               <span style={{fontSize:14,color:selected.includes(opt)?'var(--accent)':'var(--text)'}}>{opt}</span>
             </div>
@@ -85,11 +82,10 @@ function EndoSection({ rows, setRows }) {
   const addCanal = idx => setRows(r => r.map((t,i) => i===idx ? {...t,canals:[...t.canals,emptyCanal()]} : t));
   const removeCanal = (ti,ci) => setRows(r => r.map((t,i) => i===ti ? {...t,canals:t.canals.filter((_,j)=>j!==ci)} : t));
   const updateCanal = (ti,ci,key,val) => setRows(r => r.map((t,i) => i===ti ? {...t,canals:t.canals.map((c,j)=>j===ci?{...c,[key]:val}:c)} : t));
-
   return (
     <div style={{borderLeft:'3px solid var(--endo)',paddingLeft:16,marginBottom:20}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-        <span style={{fontSize:14,fontWeight:700,color:'var(--endo)'}}>🔵 Endo Visits</span>
+        <span style={{fontSize:14,fontWeight:700,color:'var(--endo)'}}>Endo Visits</span>
         <button type="button" onClick={addTooth} style={{padding:'5px 14px',background:'rgba(56,139,253,0.15)',color:'var(--endo)',border:'none',borderRadius:20,fontSize:13,fontWeight:600,cursor:'pointer'}}>+ Add Tooth</button>
       </div>
       {rows.map((tooth,ti) => (
@@ -105,7 +101,7 @@ function EndoSection({ rows, setRows }) {
               <label style={{fontSize:11,color:'var(--muted)'}}>Date</label>
               <input type="date" value={tooth.date||''} onChange={e=>updateTooth(ti,'date',e.target.value)} style={{padding:'7px 10px'}}/>
             </div>
-            <button type="button" onClick={()=>removeTooth(ti)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>✕</button>
+            <button type="button" onClick={()=>removeTooth(ti)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>X</button>
           </div>
           <div style={{borderTop:'1px solid var(--border)',paddingTop:10}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -121,12 +117,32 @@ function EndoSection({ rows, setRows }) {
                     <input value={canal[key]||''} onChange={e=>updateCanal(ti,ci,key,e.target.value)} style={{padding:'6px 8px'}}/>
                   </div>
                 ))}
-                {tooth.canals.length > 1 && (
-                  <button type="button" onClick={()=>removeCanal(ti,ci)} style={{padding:'4px 8px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end',fontSize:12}}>✕</button>
-                )}
+                {tooth.canals.length > 1 && <button type="button" onClick={()=>removeCanal(ti,ci)} style={{padding:'4px 8px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end',fontSize:12}}>X</button>}
               </div>
             ))}
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function VisitSection({ title, color, rows, onAdd, onUpdate, onRemove, fields }) {
+  return (
+    <div style={{borderLeft:`3px solid ${color}`,paddingLeft:16,marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+        <span style={{fontSize:14,fontWeight:700,color}}>{title}</span>
+        <button type="button" onClick={onAdd} style={{padding:'5px 14px',background:color+'22',color,border:'none',borderRadius:20,fontSize:13,fontWeight:600,cursor:'pointer'}}>+ Add Visit</button>
+      </div>
+      {rows.map((row,idx) => (
+        <div key={idx} style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
+          {fields.map(f => (
+            <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:90}}>
+              <label style={{fontSize:11,color:'var(--muted)'}}>{f.label}</label>
+              <input type={f.type||'text'} value={row[f.key]||''} onChange={e=>onUpdate(idx,f.key,e.target.value)} style={{padding:'7px 10px'}}/>
+            </div>
+          ))}
+          <button type="button" onClick={()=>onRemove(idx)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>X</button>
         </div>
       ))}
     </div>
@@ -169,11 +185,6 @@ export default function PatientForm() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const addRow = (setter, fields) => setter(r => [...r, emptyRow(fields)]);
-  const updateRow = (setter, idx, key, val) =>
-    setter(rows => rows.map((r, i) => i === idx ? { ...r, [key]: val } : r));
-  const removeRow = (setter, idx) => setter(rows => rows.filter((_, i) => i !== idx));
-
   const handleSave = async () => {
     if (!form.name.trim()) return alert('Please enter patient name');
     if (!form.patientType) return alert('Please select patient type');
@@ -182,10 +193,10 @@ export default function PatientForm() {
       const data = { ...form, endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
       if (isEdit) {
         await updatePatient(user.uid, id, data);
-        nav(`/patients/${id}`);
+        nav('/patients/' + id);
       } else {
         const ref = await addPatient(user.uid, data);
-        nav(`/patients/${ref.id}`);
+        nav('/patients/' + ref.id);
       }
     } catch (err) {
       if (err.message === 'LIMIT_REACHED') {
@@ -197,49 +208,29 @@ export default function PatientForm() {
     } finally { setSaving(false); }
   };
 
-  const VisitSection = ({ title, color, rows, setter, fields }) => (
-    <div style={{borderLeft:`3px solid ${color}`,paddingLeft:16,marginBottom:20}}>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-        <span style={{fontSize:14,fontWeight:700,color}}>{title}</span>
-        <button type="button" onClick={()=>addRow(setter,fields)} style={{padding:'5px 14px',background:color+'22',color,border:'none',borderRadius:20,fontSize:13,fontWeight:600,cursor:'pointer'}}>+ Add Visit</button>
-      </div>
-      {rows.map((row,idx) => (
-        <div key={idx} style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
-          {fields.map(f => (
-            <div key={f.key} style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:90}}>
-              <label style={{fontSize:11,color:'var(--muted)'}}>{f.label}</label>
-              <input type={f.type||'text'} value={row[f.key]||''} onChange={e=>updateRow(setter,idx,f.key,e.target.value)} style={{padding:'7px 10px'}}/>
-            </div>
-          ))}
-          <button type="button" onClick={()=>removeRow(setter,idx)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>✕</button>
-        </div>
-      ))}
-    </div>
-  );
-
   return (
     <div>
       <div className={styles.topbar}>
         <div>
-          <h1 className={styles.title}>{isEdit ? '✏️ Edit Patient' : '➕ New Patient'}</h1>
+          <h1 className={styles.title}>{isEdit ? 'Edit Patient' : 'New Patient'}</h1>
         </div>
         <div className={styles.topActions}>
           <button className={styles.cancelBtn} onClick={() => nav(-1)}>Cancel</button>
           <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : '💾 Save Patient'}
+            {saving ? 'Saving...' : 'Save Patient'}
           </button>
         </div>
       </div>
 
-      <div className={`card ${styles.section}`}>
+      <div className={'card ' + styles.section}>
         <h3 className={styles.sectionTitle}>Patient Info</h3>
         <div className={styles.grid4}>
-          <div className={styles.field}><label>Full Name *</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full name"/></div>
+          <div className={styles.field}><label>Full Name</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full name"/></div>
           <div className={styles.field}><label>Phone</label><input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="Phone number"/></div>
           <div className={styles.field}><label>Age</label><input value={form.age} onChange={e=>set('age',e.target.value)} placeholder="Age"/></div>
           <div className={styles.field}><label>Occupation</label><input value={form.occupation} onChange={e=>set('occupation',e.target.value)} placeholder="Occupation"/></div>
           <div className={styles.field}><label>Chief Complaint</label><input value={form.chiefComplaint} onChange={e=>set('chiefComplaint',e.target.value)} placeholder="Chief complaint"/></div>
-          <div className={styles.field}><label>Tooth</label><input value={form.tooth} onChange={e=>set('tooth',e.target.value)} placeholder="Tooth number/name"/></div>
+          <div className={styles.field}><label>Tooth</label><input value={form.tooth} onChange={e=>set('tooth',e.target.value)} placeholder="Tooth number"/></div>
           <div className={styles.field}>
             <label>Procedure</label>
             <select value={form.procedure} onChange={e=>set('procedure',e.target.value)}>
@@ -263,7 +254,7 @@ export default function PatientForm() {
           <div className={styles.field}>
             <label>Alert</label>
             <select value={form.alert} onChange={e=>set('alert',e.target.value)}>
-              {['None','⚠️ Alert','🔴 Urgent'].map(o=><option key={o}>{o}</option>)}
+              {['None','Alert','Urgent'].map(o=><option key={o}>{o}</option>)}
             </select>
           </div>
           <div className={styles.field}><label>Start Date</label><input type="date" value={form.dateStart} onChange={e=>set('dateStart',e.target.value)}/></div>
@@ -279,32 +270,47 @@ export default function PatientForm() {
         </div>
       </div>
 
-      <div className={`card ${styles.section}`}>
+      <div className={'card ' + styles.section}>
         <h3 className={styles.sectionTitle}>Patient Type</h3>
         <div className={styles.typeRow}>
           {['Adult','Bedo'].map(t => (
-            <label key={t} className={`${styles.typeOption} ${form.patientType===t?styles.typeActive:''}`}>
+            <label key={t} className={styles.typeOption + ' ' + (form.patientType===t?styles.typeActive:'')}>
               <input type="radio" name="type" value={t} checked={form.patientType===t} onChange={()=>set('patientType',t)}/>
-              {t==='Adult'?'🧑 Adult':'👶 Bedo (Child)'}
+              {t==='Adult'?'Adult':'Bedo (Child)'}
             </label>
           ))}
         </div>
       </div>
 
       {form.patientType === 'Adult' && (
-        <div className={`card ${styles.section}`}>
+        <div className={'card ' + styles.section}>
           <h3 className={styles.sectionTitle}>Visit Sessions</h3>
           <EndoSection rows={endoRows} setRows={setEndoRows}/>
-          <VisitSection title="🟡 Operative Visits" color="var(--operative)" rows={operativeRows} setter={setOperativeRows} fields={OPERATIVE_FIELDS}/>
-          <VisitSection title="🔴 Surgery Visits" color="var(--surgery)" rows={surgeryRows} setter={setSurgeryRows} fields={SURGERY_FIELDS}/>
-          <VisitSection title="🟣 Proth Visits" color="var(--proth)" rows={prothRows} setter={setProthRows} fields={PROTH_FIELDS}/>
+          <VisitSection
+            title="Operative Visits" color="var(--operative)" rows={operativeRows} fields={OPERATIVE_FIELDS}
+            onAdd={()=>setOperativeRows(r=>[...r,emptyRow(OPERATIVE_FIELDS)])}
+            onUpdate={(idx,key,val)=>setOperativeRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
+            onRemove={(idx)=>setOperativeRows(r=>r.filter((_,i)=>i!==idx))}
+          />
+          <VisitSection
+            title="Surgery Visits" color="var(--surgery)" rows={surgeryRows} fields={SURGERY_FIELDS}
+            onAdd={()=>setSurgeryRows(r=>[...r,emptyRow(SURGERY_FIELDS)])}
+            onUpdate={(idx,key,val)=>setSurgeryRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
+            onRemove={(idx)=>setSurgeryRows(r=>r.filter((_,i)=>i!==idx))}
+          />
+          <VisitSection
+            title="Proth Visits" color="var(--proth)" rows={prothRows} fields={PROTH_FIELDS}
+            onAdd={()=>setProthRows(r=>[...r,emptyRow(PROTH_FIELDS)])}
+            onUpdate={(idx,key,val)=>setProthRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
+            onRemove={(idx)=>setProthRows(r=>r.filter((_,i)=>i!==idx))}
+          />
         </div>
       )}
 
       <div className={styles.bottomActions}>
         <button className={styles.cancelBtn} onClick={() => nav(-1)}>Cancel</button>
         <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-          {saving ? 'Saving...' : '💾 Save Patient'}
+          {saving ? 'Saving...' : 'Save Patient'}
         </button>
       </div>
     </div>
