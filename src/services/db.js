@@ -72,9 +72,12 @@ export async function getVisits(uid, pid, type) {
 }
 
 export async function addVisit(uid, pid, type, data) {
-  return addDoc(collection(db, 'clinics', uid, 'patients', pid, type), {
-    ...data, createdAt: serverTimestamp()
-  });
+  const patientRef = doc(db, 'clinics', uid, 'patients', pid);
+  const snap = await getDoc(patientRef);
+  if (!snap.exists()) return;
+  const current = snap.data()[type] || [];
+  const updated = Array.isArray(data) ? [...current, ...data] : [...current, data];
+  return updateDoc(patientRef, { [type]: updated });
 }
 
 export async function deleteVisit(uid, pid, type, vid) {
