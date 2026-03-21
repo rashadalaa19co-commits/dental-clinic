@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { addPatient, updatePatient, getPatients } from '../services/db';
+import { addPatient, updatePatient, getPatients, canAddPatient } from '../services/db';
 import styles from './PatientForm.module.css';
 
 const DENTAL_HISTORY_OPTIONS = [
@@ -87,12 +87,14 @@ export default function PatientForm() {
         const ref = await addPatient(user.uid, data);
         nav(`/patients/${ref.id}`);
       }
-    } catch (err) {
+} catch (err) {
       if (err.message === 'LIMIT_REACHED') {
         nav('/locked');
+      } else {
+        alert('Error saving patient!');
+        console.error(err);
       }
     } finally { setSaving(false); }
-  };
 
   const VisitSection = ({ title, color, rows, setter, fields }) => (
     <div className={styles.visitSection} style={{ borderLeftColor: color }}>
