@@ -1,13 +1,33 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, getDoc, query, where, orderBy, serverTimestamp
+  getDocs, getDoc, query, orderBy, serverTimestamp, setDoc
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// Each clinic is isolated by uid (Google user id)
+const FREE_LIMIT = 2;
+
 const col = (uid, name) => collection(db, 'clinics', uid, name);
 
-// ── PATIENTS ──────────────────────────────────────────
+export async function checkAccess(uid) {
+  const ref = doc(db, 'clinics', uid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    await setDoc(ref, { isActive: false, patientCount: 0, createdAt: serverTimestamp() });
+    return { allowed: true, isActive: false, patientCount: 0 };
+  }
+  const data = snap.data();
+  const isActive = data.isActive || false;
+  const patientCount = data.patientCount || 0;
+  const allowed = isActive || patientCount < FREE_LIMIT;
+  return { allowed, isActive, patientCount };
+}
+
+export async function canAddPatient(uid) {
+  const { isActive, patientCount } = await checkAccess(uid);
+  if (isActive) return true;
+  return patientCount < FREE_LIMIT;
+}
+
 export async function getPatients(uid) {
   const q = query(col(uid, 'patients'), orderBy('createdAt', 'desc'));
   const snap = await getDocs(q);
@@ -15,7 +35,12 @@ export async function getPatients(uid) {
 }
 
 export async function addPatient(uid, data) {
-  return addDoc(col(uid, 'patients'), { ...data, createdAt: serverTimestamp() });
+  const canAdd = await canAddPatient(uid);
+  if (!canAdd) throw new Error('LIMIT_REACHED');
+  const ref = await addDoc(col(uid, 'patients'), { ...data, createdAt: serverTimestamp() });
+  const patients = await getPatients(uid);
+  await updateDoc(doc(db, 'clinics', uid), { patientCount: patients.length });
+  return ref;
 }
 
 export async function updatePatient(uid, pid, data) {
@@ -23,17 +48,15 @@ export async function updatePatient(uid, pid, data) {
 }
 
 export async function deletePatient(uid, pid) {
-  // delete subcollections first
   for (const sub of ['endoVisits', 'operativeVisits', 'surgeryVisits', 'prothVisits']) {
-    const snap = await getDocs(col(uid, 'patients').path ? 
-      collection(db, 'clinics', uid, 'patients', pid, sub) : 
-      collection(db, 'clinics', uid, 'patients', pid, sub));
+    const snap = await getDocs(collection(db, 'clinics', uid, 'patients', pid, sub));
     for (const d of snap.docs) await deleteDoc(d.ref);
   }
-  return deleteDoc(doc(db, 'clinics', uid, 'patients', pid));
+  await deleteDoc(doc(db, 'clinics', uid, 'patients', pid));
+  const patients = await getPatients(uid);
+  await updateDoc(doc(db, 'clinics', uid), { patientCount: patients.length });
 }
 
-// ── VISITS (sub-collections) ──────────────────────────
 export async function getVisits(uid, pid, type) {
   const snap = await getDocs(
     query(collection(db, 'clinics', uid, 'patients', pid, type), orderBy('date', 'desc'))
@@ -51,7 +74,6 @@ export async function deleteVisit(uid, pid, type, vid) {
   return deleteDoc(doc(db, 'clinics', uid, 'patients', pid, type, vid));
 }
 
-// ── APPOINTMENTS ──────────────────────────────────────
 export async function getAppointments(uid) {
   const q = query(col(uid, 'appointments'), orderBy('datetime', 'asc'));
   const snap = await getDocs(q);
