@@ -71,14 +71,22 @@ function EndoForm({ initial, onSave, onCancel }) {
   );
 }
 
-function VisitForm({ fields, initial, onSave, onCancel }) {
+const VisitForm = ({ fields, initial, onSave, onCancel }) => {
   const [data, setData] = useState(initial || Object.fromEntries(fields.map(f => [f.k, ''])));
   return (
     <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',alignItems:'flex-end'}}>
       {fields.map(f => (
         <div key={f.k} style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:90}}>
           <label style={{fontSize:11,color:'var(--muted)'}}>{f.l}</label>
-          <input type={f.t||'text'} value={data[f.k]||''} onChange={e=>setData(d=>({...d,[f.k]:e.target.value}))} style={{padding:'7px 10px'}}/>
+          <input
+            type={f.t||'text'}
+            value={data[f.k]||''}
+            onChange={e => {
+              const val = e.target.value;
+              setData(d => ({...d,[f.k]:val}));
+            }}
+            style={{padding:'7px 10px'}}
+          />
         </div>
       ))}
       <div style={{display:'flex',gap:8}}>
@@ -87,7 +95,7 @@ function VisitForm({ fields, initial, onSave, onCancel }) {
       </div>
     </div>
   );
-}
+};
 
 export default function PatientDetail() {
   const { user } = useAuth();
