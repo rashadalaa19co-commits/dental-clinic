@@ -1,0 +1,50 @@
+.topbar { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; gap:12px; flex-wrap:wrap; }
+.title { font-size:26px; font-weight:800; }
+.sub { color:var(--muted); font-size:14px; margin-top:4px; }
+.addBtn { padding:9px 18px; background:var(--accent); color:#000; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; white-space:nowrap; transition:opacity 0.2s; }
+.addBtn:hover { opacity:0.85; }
+
+.formCard { margin-bottom:20px; }
+.formTitle { font-size:15px; font-weight:700; margin-bottom:16px; }
+.formGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.field { display:flex; flex-direction:column; gap:6px; }
+.field label { font-size:12px; color:var(--muted); font-weight:500; }
+.full { grid-column:1/-1; }
+.formActions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+.cancelBtn { padding:9px 18px; background:transparent; border:1px solid var(--border); color:var(--muted); border-radius:var(--radius-sm); font-size:14px; }
+.saveBtn { padding:9px 22px; background:var(--accent); color:#000; border:none; border-radius:var(--radius-sm); font-size:14px; font-weight:600; }
+.saveBtn:disabled { opacity:0.5; }
+
+.tabs { display:flex; gap:4px; margin-bottom:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); padding:4px; width:fit-content; }
+.tab { padding:7px 16px; background:transparent; border:none; color:var(--muted); border-radius:6px; font-size:14px; font-weight:500; transition:all 0.15s; }
+.tab:hover { color:var(--text); }
+.activeTab { background:var(--surface2); color:var(--text); }
+
+.list { display:flex; flex-direction:column; gap:8px; }
+.apptCard { display:flex; align-items:center; gap:16px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; transition:border-color 0.2s; }
+.apptCard:hover { border-color:rgba(0,212,255,0.3); }
+.today { border-left:3px solid var(--accent); }
+
+.apptDate { display:flex; flex-direction:column; align-items:center; min-width:40px; }
+.apptDay { font-size:11px; color:var(--muted); text-transform:uppercase; }
+.apptNum { font-size:24px; font-weight:800; font-family:'Syne',sans-serif; line-height:1; }
+.apptMonth { font-size:11px; color:var(--muted); }
+
+.apptTime { font-size:18px; font-weight:700; color:var(--accent); min-width:56px; font-family:'Syne',sans-serif; }
+.apptInfo { flex:1; }
+.apptName { font-size:15px; font-weight:600; }
+.apptMeta { display:flex; align-items:center; gap:8px; margin-top:4px; flex-wrap:wrap; }
+.apptType { font-size:12px; color:var(--muted); }
+.todayTag { font-size:11px; background:rgba(0,212,255,0.15); color:var(--accent); padding:2px 8px; border-radius:10px; }
+.tomTag { font-size:11px; background:rgba(124,58,237,0.15); color:var(--proth); padding:2px 8px; border-radius:10px; }
+.apptNotes { font-size:12px; color:var(--muted); }
+
+.apptRight { display:flex; align-items:center; gap:8px; }
+.statusSelect { padding:6px 10px; font-size:13px; border-radius:6px; min-width:110px; }
+.delApptBtn { background:none; border:none; font-size:16px; padding:6px; border-radius:6px; opacity:0.5; transition:all 0.15s; }
+.delApptBtn:hover { background:rgba(248,81,73,0.15); opacity:1; }
+
+.empty { color:var(--muted); text-align:center; padding:40px; }
+
+@media(max-width:768px) { .formGrid { grid-template-columns:1fr 1fr; } }
+@media(max-width:500px) { .formGrid { grid-template-columns:1fr; } .apptDate { display:none; } }

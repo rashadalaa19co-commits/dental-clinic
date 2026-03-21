@@ -1,0 +1,45 @@
+.loading { display:flex; align-items:center; justify-content:center; height:200px; color:var(--muted); }
+
+.header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
+.headerLeft { display:flex; align-items:flex-start; gap:14px; }
+.backBtn { background:none; border:1px solid var(--border); color:var(--muted); padding:7px 14px; border-radius:var(--radius-sm); font-size:13px; transition:all 0.2s; margin-top:4px; }
+.backBtn:hover { border-color:var(--text); color:var(--text); }
+.name { font-size:26px; font-weight:800; }
+.headerMeta { display:flex; align-items:center; gap:8px; margin-top:6px; }
+.metaText { font-size:13px; color:var(--muted); }
+.headerActions { display:flex; gap:10px; }
+.editBtn { padding:9px 18px; background:rgba(124,58,237,0.15); color:var(--proth); border:1px solid rgba(124,58,237,0.3); border-radius:var(--radius-sm); font-size:14px; transition:all 0.2s; }
+.editBtn:hover { background:rgba(124,58,237,0.25); }
+.delBtn { padding:9px 18px; background:rgba(248,81,73,0.1); color:var(--danger); border:1px solid rgba(248,81,73,0.2); border-radius:var(--radius-sm); font-size:14px; transition:all 0.2s; }
+.delBtn:hover { background:rgba(248,81,73,0.2); }
+
+.infoCard { margin-bottom:16px; }
+.infoGrid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.infoItem { background:var(--surface2); border-radius:var(--radius-sm); padding:10px 14px; }
+.infoLabel { font-size:11px; color:var(--muted); margin-bottom:4px; }
+.infoVal { font-size:14px; font-weight:500; }
+.notes { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+.notesText { font-size:14px; color:var(--muted); margin-top:4px; line-height:1.6; }
+
+.visitCard { margin-bottom:14px; border-left:3px solid var(--endo); padding-left:20px; }
+.visitHeader { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.visitLabel { font-size:15px; font-weight:700; }
+.visitCount { font-size:12px; color:var(--muted); flex:1; }
+.addVisitBtn { padding:5px 14px; background:transparent; border:1px solid; border-radius:20px; font-size:13px; font-weight:500; transition:opacity 0.2s; }
+.addVisitBtn:hover { opacity:0.75; }
+
+.inlineForm { display:flex; flex-wrap:wrap; gap:10px; padding:14px; background:var(--surface2); border-radius:var(--radius-sm); margin-bottom:12px; align-items:flex-end; border:1px solid var(--border); }
+.inlineField { display:flex; flex-direction:column; gap:4px; min-width:90px; flex:1; }
+.inlineField label { font-size:11px; color:var(--muted); }
+.inlineField input { padding:7px 10px; }
+.saveVisitBtn { padding:8px 18px; background:var(--success); color:#000; border:none; border-radius:var(--radius-sm); font-size:13px; font-weight:600; flex-shrink:0; }
+.saveVisitBtn:disabled { opacity:0.5; }
+
+.noVisits { color:var(--muted); font-size:13px; padding:8px 0; }
+.visitRow { display:flex; flex-wrap:wrap; gap:12px; padding:12px; background:var(--surface2); border-radius:var(--radius-sm); margin-bottom:6px; }
+.visitField { display:flex; flex-direction:column; gap:2px; }
+.visitFieldLabel { font-size:10px; color:var(--muted); text-transform:capitalize; }
+.visitFieldVal { font-size:13px; font-weight:500; }
+
+@media(max-width:768px) { .infoGrid { grid-template-columns:repeat(2,1fr); } }
+@media(max-width:500px) { .infoGrid { grid-template-columns:1fr; } }

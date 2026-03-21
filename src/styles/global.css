@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d1117;
+  --surface:  #161b22;
+  --surface2: #1c2333;
+  --border:   rgba(255,255,255,0.08);
+  --accent:   #00d4ff;
+  --accent2:  #7c3aed;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --success:  #3fb950;
+  --warning:  #d29922;
+  --danger:   #f85149;
+  --endo:     #388bfd;
+  --operative:#e3b341;
+  --surgery:  #f85149;
+  --proth:    #bc8cff;
+  --radius:   12px;
+  --radius-sm:8px;
+}
+
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+#root { height: 100%; display: flex; flex-direction: column; }
+
+h1, h2, h3, h4 { font-family: 'Syne', sans-serif; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Form base */
+input, select, textarea {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); border-radius: var(--radius-sm);
+  padding: 9px 12px; font-family: inherit; font-size: 14px;
+  outline: none; transition: border 0.2s;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+select option { background: var(--surface2); }
+textarea { resize: vertical; min-height: 80px; }
+
+button { font-family: inherit; cursor: pointer; }
+
+/* Utility */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+}
+.badge-done     { background: rgba(63,185,80,0.15);  color: var(--success); }
+.badge-progress { background: rgba(56,139,253,0.15); color: var(--endo); }
+.badge-waiting  { background: rgba(210,153,34,0.15); color: var(--warning); }
+.badge-followup { background: rgba(188,140,255,0.15);color: var(--proth); }
+.badge-lap      { background: rgba(248,81,73,0.15);  color: var(--danger); }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px;
+}

@@ -1,0 +1,23 @@
+.wrap {
+  min-height: 100vh; display: flex; align-items: center;
+  justify-content: center; background: var(--bg);
+  background-image: radial-gradient(circle at 30% 40%, rgba(0,212,255,0.06) 0%, transparent 50%),
+                    radial-gradient(circle at 70% 60%, rgba(124,58,237,0.06) 0%, transparent 50%);
+}
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 48px 40px; text-align: center;
+  width: 360px; max-width: 90vw;
+}
+.logo { font-size: 56px; margin-bottom: 12px; }
+.title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+.sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 12px 20px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text); font-size: 15px; font-weight: 500;
+  transition: all 0.2s;
+}
+.btn:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
+.note { margin-top: 20px; font-size: 12px; color: var(--muted); }
