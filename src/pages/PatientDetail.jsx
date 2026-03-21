@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getPatients, deletePatient, addVisit } from '../services/db';
+import { getPatients, deletePatient, updatePatient } from '../services/db';
 import styles from './PatientDetail.module.css';
 
 const STATUS_BADGE = {
@@ -9,48 +9,15 @@ const STATUS_BADGE = {
   'Not started':'badge-waiting','Follow Up':'badge-followup','Lap waiting':'badge-lap'
 };
 
-const OPERATIVE_FIELDS=[{k:'toothName',l:'Tooth'},{k:'toothClamp',l:'Clamp'},{k:'classType',l:'Class'},{k:'shade',l:'Shade'},{k:'date',l:'Date',t:'date'}];
-const SURGERY_FIELDS=[{k:'toothName',l:'Tooth'},{k:'toothNum',l:'Num'},{k:'typeOfEx',l:'Type EX'},{k:'sutureType',l:'Suture'},{k:'complications',l:'Complications'},{k:'date',l:'Date',t:'date'}];
-const PROTH_FIELDS=[{k:'toothName',l:'Tooth'},{k:'teeth',l:'Teeth'},{k:'labStage',l:'Lab Stage'},{k:'material',l:'Material'},{k:'shade',l:'Shade'},{k:'vitality',l:'Vitality'},{k:'impression',l:'Impression'},{k:'labName',l:'Lab'},{k:'date',l:'Date',t:'date'}];
-const FIELDS_MAP = { operativeVisits:OPERATIVE_FIELDS, surgeryVisits:SURGERY_FIELDS, prothVisits:PROTH_FIELDS };
-
 const emptyCanal = () => ({ canal:'', wl:'', maf:'', note:'' });
 const emptyTooth = () => ({ toothName:'', diagnosis:'', clamp:'', referencePoint:'', date:'', canals:[emptyCanal()] });
 
-function EndoDisplay({ visits }) {
-  if (!visits || visits.length === 0) return <p style={{color:'var(--muted)',fontSize:13,padding:'8px 0'}}>No endo visits yet</p>;
-  return visits.map((tooth, ti) => (
-    <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
-      <div style={{display:'flex',flexWrap:'wrap',gap:12,marginBottom:10}}>
-        {[['Tooth',tooth.toothName],['Diagnosis',tooth.diagnosis],['Clamp',tooth.clamp],['Ref Point',tooth.referencePoint],['Date',tooth.date]].map(([label,val]) => val ? (
-          <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
-            <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{label}</span>
-            <span style={{fontSize:14,fontWeight:500}}>{val}</span>
-          </div>
-        ) : null)}
-      </div>
-      {tooth.canals && tooth.canals.length > 0 && (
-        <div style={{borderTop:'1px solid var(--border)',paddingTop:10}}>
-          <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,marginBottom:8}}>CANALS</div>
-          {tooth.canals.map((canal, ci) => (
-            <div key={ci} style={{display:'flex',flexWrap:'wrap',gap:10,padding:'8px',background:'var(--bg)',borderRadius:8,marginBottom:6}}>
-              <span style={{fontSize:12,color:'var(--endo)',fontWeight:700,minWidth:20}}>{ci+1}</span>
-              {[['Canal',canal.canal],['WL',canal.wl],['MAF',canal.maf],['Note',canal.note]].map(([label,val]) => val ? (
-                <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
-                  <span style={{fontSize:10,color:'var(--muted)'}}>{label}</span>
-                  <span style={{fontSize:13,fontWeight:500}}>{val}</span>
-                </div>
-              ) : null)}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  ));
-}
+const OPERATIVE_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothClamp',l:'Clamp'},{k:'classType',l:'Class'},{k:'shade',l:'Shade'},{k:'date',l:'Date',t:'date'}];
+const SURGERY_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothNum',l:'Tooth Num'},{k:'typeOfEx',l:'Type EX'},{k:'sutureType',l:'Suture'},{k:'complications',l:'Complications'},{k:'date',l:'Date',t:'date'}];
+const PROTH_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'teeth',l:'Teeth'},{k:'labStage',l:'Lab Stage'},{k:'material',l:'Material'},{k:'shade',l:'Shade'},{k:'vitality',l:'Vitality'},{k:'impression',l:'Impression'},{k:'labName',l:'Lab'},{k:'date',l:'Date',t:'date'}];
 
-function AddEndoForm({ onSave, onCancel }) {
-  const [teeth, setTeeth] = useState([emptyTooth()]);
+function EndoForm({ initial, onSave, onCancel }) {
+  const [teeth, setTeeth] = useState(initial ? [initial] : [emptyTooth()]);
   const addTooth = () => setTeeth(t => [...t, emptyTooth()]);
   const removeTooth = idx => setTeeth(t => t.filter((_,i) => i !== idx));
   const updateTooth = (idx, key, val) => setTeeth(t => t.map((x,i) => i===idx ? {...x,[key]:val} : x));
@@ -73,7 +40,7 @@ function AddEndoForm({ onSave, onCancel }) {
               <label style={{fontSize:11,color:'var(--muted)'}}>Date</label>
               <input type="date" value={tooth.date||''} onChange={e=>updateTooth(ti,'date',e.target.value)} style={{padding:'7px 10px'}}/>
             </div>
-            {teeth.length > 1 && <button onClick={()=>removeTooth(ti)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>✕</button>}
+            {teeth.length > 1 && <button onClick={()=>removeTooth(ti)} style={{padding:'6px 10px',background:'rgba(248,81,73,0.15)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end'}}>X</button>}
           </div>
           <div style={{borderTop:'1px solid var(--border)',paddingTop:10}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
@@ -89,15 +56,33 @@ function AddEndoForm({ onSave, onCancel }) {
                     <input value={canal[key]||''} onChange={e=>updateCanal(ti,ci,key,e.target.value)} style={{padding:'6px 8px'}}/>
                   </div>
                 ))}
-                {tooth.canals.length > 1 && <button onClick={()=>removeCanal(ti,ci)} style={{padding:'4px 8px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end',fontSize:12}}>✕</button>}
+                {tooth.canals.length > 1 && <button onClick={()=>removeCanal(ti,ci)} style={{padding:'4px 8px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,cursor:'pointer',alignSelf:'flex-end',fontSize:12}}>X</button>}
               </div>
             ))}
           </div>
         </div>
       ))}
-      <div style={{display:'flex',gap:10,marginTop:10,alignItems:'center'}}>
-        <button onClick={addTooth} style={{padding:'6px 14px',background:'rgba(56,139,253,0.1)',color:'var(--endo)',border:'1px solid rgba(56,139,253,0.3)',borderRadius:20,fontSize:13,cursor:'pointer'}}>+ Add Tooth</button>
-        <button onClick={()=>onSave(teeth)} style={{padding:'8px 18px',background:'var(--success)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:13,fontWeight:600,cursor:'pointer'}}>💾 Save</button>
+      <div style={{display:'flex',gap:10,marginTop:10,alignItems:'center',flexWrap:'wrap'}}>
+        {!initial && <button onClick={addTooth} style={{padding:'6px 14px',background:'rgba(56,139,253,0.1)',color:'var(--endo)',border:'1px solid rgba(56,139,253,0.3)',borderRadius:20,fontSize:13,cursor:'pointer'}}>+ Add Tooth</button>}
+        <button onClick={()=>onSave(teeth)} style={{padding:'8px 18px',background:'var(--success)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+        <button onClick={onCancel} style={{padding:'8px 14px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',fontSize:13,cursor:'pointer'}}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function VisitForm({ fields, initial, onSave, onCancel }) {
+  const [data, setData] = useState(initial || Object.fromEntries(fields.map(f => [f.k, ''])));
+  return (
+    <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',alignItems:'flex-end'}}>
+      {fields.map(f => (
+        <div key={f.k} style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:90}}>
+          <label style={{fontSize:11,color:'var(--muted)'}}>{f.l}</label>
+          <input type={f.t||'text'} value={data[f.k]||''} onChange={e=>setData(d=>({...d,[f.k]:e.target.value}))} style={{padding:'7px 10px'}}/>
+        </div>
+      ))}
+      <div style={{display:'flex',gap:8}}>
+        <button onClick={()=>onSave(data)} style={{padding:'8px 18px',background:'var(--success)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
         <button onClick={onCancel} style={{padding:'8px 14px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',fontSize:13,cursor:'pointer'}}>Cancel</button>
       </div>
     </div>
@@ -109,35 +94,55 @@ export default function PatientDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const [patient, setPatient] = useState(null);
-  const [addingVisit, setAddingVisit] = useState(null);
-  const [newVisitData, setNewVisitData] = useState({});
+  const [adding, setAdding] = useState(null);
+  const [editing, setEditing] = useState({ type: null, idx: null });
   const [saving, setSaving] = useState(false);
 
   const load = () => getPatients(user.uid).then(pts => setPatient(pts.find(p => p.id === id) || null));
   useEffect(() => { if (user) load(); }, [user, id]);
 
   const handleDelete = async () => {
-    if (!confirm('Delete this patient and all their data?')) return;
+    if (!confirm('Delete this patient?')) return;
     await deletePatient(user.uid, id);
     nav('/patients');
   };
 
-  const saveEndoVisits = async (teeth) => {
+  const saveVisits = async (type, visits) => {
     setSaving(true);
-    for (const tooth of teeth) {
-      await addVisit(user.uid, id, 'endoVisits', tooth);
-    }
+    await updatePatient(user.uid, id, { ...patient, [type]: visits });
     await load();
-    setAddingVisit(null);
+    setAdding(null);
+    setEditing({ type: null, idx: null });
     setSaving(false);
   };
 
-  const saveVisit = async () => {
-    setSaving(true);
-    await addVisit(user.uid, id, addingVisit, newVisitData);
-    await load();
-    setAddingVisit(null);
-    setSaving(false);
+  const handleAddEndo = async (teeth) => {
+    const current = patient.endoVisits || [];
+    await saveVisits('endoVisits', [...current, ...teeth]);
+  };
+
+  const handleEditEndo = async (teeth) => {
+    const current = [...(patient.endoVisits || [])];
+    current[editing.idx] = teeth[0];
+    await saveVisits('endoVisits', current);
+  };
+
+  const handleAddVisit = async (type, data) => {
+    const current = patient[type] || [];
+    await saveVisits(type, [...current, data]);
+  };
+
+  const handleEditVisit = async (type, data) => {
+    const current = [...(patient[type] || [])];
+    current[editing.idx] = data;
+    await saveVisits(type, current);
+  };
+
+  const handleDeleteVisit = async (type, idx) => {
+    if (!confirm('Delete this visit?')) return;
+    const current = [...(patient[type] || [])];
+    current.splice(idx, 1);
+    await saveVisits(type, current);
   };
 
   if (!patient) return <div className={styles.loading}>Loading...</div>;
@@ -165,9 +170,10 @@ export default function PatientDetail() {
 
   return (
     <div>
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <button className={styles.backBtn} onClick={() => nav('/patients')}>← Back</button>
+          <button className={styles.backBtn} onClick={() => nav('/patients')}>Back</button>
           <div>
             <h1 className={styles.name}>{patient.name}</h1>
             <div className={styles.headerMeta}>
@@ -178,11 +184,12 @@ export default function PatientDetail() {
           </div>
         </div>
         <div className={styles.headerActions}>
-          <button className={styles.editBtn} onClick={() => nav(`/patients/${id}/edit`)}>✏️ Edit</button>
-          <button className={styles.delBtn} onClick={handleDelete}>🗑️ Delete</button>
+          <button className={styles.editBtn} onClick={() => nav(`/patients/${id}/edit`)}>Edit</button>
+          <button className={styles.delBtn} onClick={handleDelete}>Delete</button>
         </div>
       </div>
 
+      {/* Info grid */}
       <div className={`card ${styles.infoCard}`}>
         <div className={styles.infoGrid}>
           {info.map(([label, val]) => val ? (
@@ -194,29 +201,70 @@ export default function PatientDetail() {
         </div>
         {patient.notes && (
           <div className={styles.notes}>
-            <div className={styles.infoLabel}>📝 Notes</div>
+            <div className={styles.infoLabel}>Notes</div>
             <div className={styles.notesText}>{patient.notes}</div>
           </div>
         )}
       </div>
 
+      {/* Visits - Adult only */}
       {patient.patientType === 'Adult' && (
         <>
-          {/* Endo Section */}
+          {/* ENDO */}
           <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--endo)'}}>
             <div className={styles.visitHeader}>
               <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
               <span className={styles.visitCount}>{(patient.endoVisits||[]).length} visit{(patient.endoVisits||[]).length !== 1 ? 's' : ''}</span>
               <button className={styles.addVisitBtn} style={{color:'var(--endo)',borderColor:'var(--endo)'}}
-                onClick={() => setAddingVisit(addingVisit === 'endoVisits' ? null : 'endoVisits')}>
-                {addingVisit === 'endoVisits' ? '✕ Cancel' : '+ Add Visit'}
+                onClick={() => { setAdding(adding === 'endo' ? null : 'endo'); setEditing({type:null,idx:null}); }}>
+                {adding === 'endo' ? 'Cancel' : '+ Add Visit'}
               </button>
             </div>
-            {addingVisit === 'endoVisits' && <AddEndoForm onSave={saveEndoVisits} onCancel={() => setAddingVisit(null)}/>}
-            <EndoDisplay visits={patient.endoVisits}/>
+            {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
+            {(patient.endoVisits||[]).map((tooth,ti) => (
+              <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
+                {editing.type === 'endoVisits' && editing.idx === ti ? (
+                  <EndoForm initial={tooth} onSave={handleEditEndo} onCancel={() => setEditing({type:null,idx:null})}/>
+                ) : (
+                  <>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
+                        {[['Tooth',tooth.toothName],['Diagnosis',tooth.diagnosis],['Clamp',tooth.clamp],['Ref Point',tooth.referencePoint],['Date',tooth.date]].map(([label,val]) => val ? (
+                          <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
+                            <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{label}</span>
+                            <span style={{fontSize:14,fontWeight:500}}>{val}</span>
+                          </div>
+                        ) : null)}
+                      </div>
+                      <div style={{display:'flex',gap:6}}>
+                        <button onClick={() => setEditing({type:'endoVisits',idx:ti})} style={{padding:'4px 10px',background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Edit</button>
+                        <button onClick={() => handleDeleteVisit('endoVisits',ti)} style={{padding:'4px 10px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'1px solid rgba(248,81,73,0.2)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Delete</button>
+                      </div>
+                    </div>
+                    {tooth.canals && tooth.canals.length > 0 && (
+                      <div style={{borderTop:'1px solid var(--border)',paddingTop:10}}>
+                        <div style={{fontSize:11,color:'var(--muted)',fontWeight:600,marginBottom:8}}>CANALS</div>
+                        {tooth.canals.map((canal,ci) => (
+                          <div key={ci} style={{display:'flex',flexWrap:'wrap',gap:10,padding:8,background:'var(--bg)',borderRadius:8,marginBottom:6}}>
+                            <span style={{fontSize:12,color:'var(--endo)',fontWeight:700,minWidth:20}}>{ci+1}</span>
+                            {[['Canal',canal.canal],['WL',canal.wl],['MAF',canal.maf],['Note',canal.note]].map(([label,val]) => val ? (
+                              <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
+                                <span style={{fontSize:10,color:'var(--muted)'}}>{label}</span>
+                                <span style={{fontSize:13,fontWeight:500}}>{val}</span>
+                              </div>
+                            ) : null)}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+            {(patient.endoVisits||[]).length === 0 && adding !== 'endo' && <p className={styles.noVisits}>No endo visits yet</p>}
           </div>
 
-          {/* Other visits */}
+          {/* OTHER VISITS */}
           {visitConfigs.map(cfg => {
             const visits = patient[cfg.key] || [];
             return (
@@ -225,38 +273,36 @@ export default function PatientDetail() {
                   <span className={styles.visitLabel} style={{color:cfg.color}}>{cfg.label}</span>
                   <span className={styles.visitCount}>{visits.length} visit{visits.length !== 1 ? 's' : ''}</span>
                   <button className={styles.addVisitBtn} style={{color:cfg.color,borderColor:cfg.color}}
-                    onClick={() => {
-                      if (addingVisit === cfg.key) { setAddingVisit(null); return; }
-                      setAddingVisit(cfg.key);
-                      setNewVisitData(Object.fromEntries(cfg.fields.map(f => [f.k, ''])));
-                    }}>
-                    {addingVisit === cfg.key ? '✕ Cancel' : '+ Add Visit'}
+                    onClick={() => { setAdding(adding === cfg.key ? null : cfg.key); setEditing({type:null,idx:null}); }}>
+                    {adding === cfg.key ? 'Cancel' : '+ Add Visit'}
                   </button>
                 </div>
-                {addingVisit === cfg.key && (
-                  <div className={styles.inlineForm}>
-                    {cfg.fields.map(f => (
-                      <div key={f.k} className={styles.inlineField}>
-                        <label>{f.l}</label>
-                        <input type={f.t||'text'} value={newVisitData[f.k]||''}
-                          onChange={e => setNewVisitData(d => ({...d,[f.k]:e.target.value}))}/>
-                      </div>
-                    ))}
-                    <button className={styles.saveVisitBtn} onClick={saveVisit} disabled={saving}>
-                      {saving ? '...' : '💾 Save'}
-                    </button>
-                  </div>
+                {adding === cfg.key && (
+                  <VisitForm fields={cfg.fields} onSave={(data) => handleAddVisit(cfg.key, data)} onCancel={() => setAdding(null)}/>
                 )}
-                {visits.length === 0 ? (
-                  <p className={styles.noVisits}>No visits yet</p>
-                ) : visits.map((v,i) => (
-                  <div key={i} className={styles.visitRow}>
-                    {cfg.fields.map(f => v[f.k] ? (
-                      <div key={f.k} className={styles.visitField}>
-                        <span className={styles.visitFieldLabel}>{f.l}</span>
-                        <span className={styles.visitFieldVal}>{v[f.k]}</span>
+                {visits.length === 0 && adding !== cfg.key && <p className={styles.noVisits}>No visits yet</p>}
+                {visits.map((v,i) => (
+                  <div key={i} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
+                    {editing.type === cfg.key && editing.idx === i ? (
+                      <VisitForm fields={cfg.fields} initial={v} onSave={(data) => handleEditVisit(cfg.key, data)} onCancel={() => setEditing({type:null,idx:null})}/>
+                    ) : (
+                      <div>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                          <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
+                            {cfg.fields.map(f => v[f.k] ? (
+                              <div key={f.k} style={{display:'flex',flexDirection:'column',gap:2}}>
+                                <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{f.l}</span>
+                                <span style={{fontSize:14,fontWeight:500}}>{v[f.k]}</span>
+                              </div>
+                            ) : null)}
+                          </div>
+                          <div style={{display:'flex',gap:6}}>
+                            <button onClick={() => setEditing({type:cfg.key,idx:i})} style={{padding:'4px 10px',background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Edit</button>
+                            <button onClick={() => handleDeleteVisit(cfg.key,i)} style={{padding:'4px 10px',background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'1px solid rgba(248,81,73,0.2)',borderRadius:8,fontSize:12,cursor:'pointer'}}>Delete</button>
+                          </div>
+                        </div>
                       </div>
-                    ) : null)}
+                    )}
                   </div>
                 ))}
               </div>
