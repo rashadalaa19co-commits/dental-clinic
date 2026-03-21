@@ -6,7 +6,9 @@ const NAV = [
   { to: '/',             icon: '📊', label: 'Dashboard' },
   { to: '/patients',     icon: '👥', label: 'Patients' },
   { to: '/appointments', icon: '📅', label: 'Appointments' },
-];
+  { to: '/finance',      icon: '💰', label: 'Finance' },
+  { to: '/tools',        icon: '🔧', label: 'Tools Tracking' },
+];;
 
 export default function Layout() {
   const { user, logout } = useAuth();
