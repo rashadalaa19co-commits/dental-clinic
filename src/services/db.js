@@ -44,7 +44,14 @@ export async function addPatient(uid, data) {
 }
 
 export async function updatePatient(uid, pid, data) {
-  return updateDoc(doc(db, 'clinics', uid, 'patients', pid), data);
+  const { endoVisits, operativeVisits, surgeryVisits, prothVisits, ...rest } = data;
+  await updateDoc(doc(db, 'clinics', uid, 'patients', pid), {
+    ...rest,
+    endoVisits: endoVisits || [],
+    operativeVisits: operativeVisits || [],
+    surgeryVisits: surgeryVisits || [],
+    prothVisits: prothVisits || [],
+  });
 }
 
 export async function deletePatient(uid, pid) {
