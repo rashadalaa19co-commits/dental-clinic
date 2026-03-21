@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { addPatient, updatePatient, getPatients } from '../services/db';
 import styles from './PatientForm.module.css';
 
-const DENTAL_HISTORY_OPTIONS = [
+const MEDICAL_HISTORY_OPTIONS = [
   'Medical Free','Allergy','Diabetes','Hypertension','Heart Disease',
   'Infection','Pregnancy','Bleeding Disorder','Asthma','Kidney Disease',
   'Liver Disease','Cancer','Osteoporosis','Thyroid','Epilepsy','Other'
@@ -34,6 +34,94 @@ const PROTH_FIELDS = [
 
 const emptyRow = fields => Object.fromEntries(fields.map(f => [f.key, '']));
 
+function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const toggle = val => {
+    if (selected.includes(val)) onChange(selected.filter(x => x !== val));
+    else onChange([...selected, val]);
+  };
+
+  return (
+    <div ref={ref} style={{position:'relative'}}>
+      <div
+        onClick={() => setOpen(o => !o)}
+        style={{
+          background:'var(--surface2)', border:'1px solid var(--border)',
+          borderRadius:'var(--radius-sm)', padding:'9px 12px', cursor:'pointer',
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          minHeight:42, flexWrap:'wrap', gap:6,
+          borderColor: open ? 'var(--accent)' : 'var(--border)'
+        }}
+      >
+        {selected.length === 0 ? (
+          <span style={{color:'var(--muted)',fontSize:14}}>{placeholder}</span>
+        ) : (
+          <div style={{display:'flex',flexWrap:'wrap',gap:4,flex:1}}>
+            {selected.map(s => (
+              <span key={s} style={{
+                background:'rgba(0,212,255,0.15)', color:'var(--accent)',
+                padding:'2px 8px', borderRadius:20, fontSize:12,
+                display:'flex', alignItems:'center', gap:4
+              }}>
+                {s}
+                <span
+                  onClick={e => { e.stopPropagation(); toggle(s); }}
+                  style={{cursor:'pointer', fontWeight:700, fontSize:14}}
+                >×</span>
+              </span>
+            ))}
+          </div>
+        )}
+        <span style={{color:'var(--muted)',fontSize:12,flexShrink:0}}>{open ? '▲' : '▼'}</span>
+      </div>
+
+      {open && (
+        <div style={{
+          position:'absolute', top:'calc(100% + 4px)', left:0, right:0,
+          background:'var(--surface)', border:'1px solid var(--border)',
+          borderRadius:'var(--radius-sm)', zIndex:100,
+          maxHeight:220, overflowY:'auto',
+          boxShadow:'0 8px 24px rgba(0,0,0,0.3)'
+        }}>
+          {options.map(opt => (
+            <div
+              key={opt}
+              onClick={() => toggle(opt)}
+              style={{
+                display:'flex', alignItems:'center', gap:10,
+                padding:'10px 14px', cursor:'pointer',
+                background: selected.includes(opt) ? 'rgba(0,212,255,0.08)' : 'transparent',
+                transition:'background 0.15s'
+              }}
+            >
+              <div style={{
+                width:18, height:18, borderRadius:4,
+                border: selected.includes(opt) ? '2px solid var(--accent)' : '2px solid var(--border)',
+                background: selected.includes(opt) ? 'var(--accent)' : 'transparent',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexShrink:0, transition:'all 0.15s'
+              }}>
+                {selected.includes(opt) && <span style={{color:'#000',fontSize:12,fontWeight:700}}>✓</span>}
+              </div>
+              <span style={{fontSize:14, color: selected.includes(opt) ? 'var(--accent)' : 'var(--text)'}}>
+                {opt}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PatientForm() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -42,7 +130,7 @@ export default function PatientForm() {
 
   const [form, setForm] = useState({
     name:'', phone:'', age:'', occupation:'',
-    patientType:'', dentalHistory:[],
+    patientType:'', medicalHistory:[],
     chiefComplaint:'', tooth:'', procedure:'',
     status:'Not started', difficulty:'', alert:'None',
     dateStart:'', dateEnd:'', notes:''
@@ -52,22 +140,17 @@ export default function PatientForm() {
   const [surgeryRows, setSurgeryRows] = useState([]);
   const [prothRows, setProthRows] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [dhOpen, setDhOpen] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
       getPatients(user.uid).then(patients => {
         const p = patients.find(x => x.id === id);
-        if (p) setForm(p);
+        if (p) setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
       });
     }
   }, [id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const toggleDH = val => {
-    const arr = form.dentalHistory || [];
-    set('dentalHistory', arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]);
-  };
 
   const addRow = (setter, fields) => setter(r => [...r, emptyRow(fields)]);
   const updateRow = (setter, idx, key, val) =>
@@ -171,28 +254,15 @@ export default function PatientForm() {
           </div>
           <div className={styles.field}><label>Start Date</label><input type="date" value={form.dateStart} onChange={e => set('dateStart', e.target.value)}/></div>
           <div className={styles.field}><label>End Date</label><input type="date" value={form.dateEnd} onChange={e => set('dateEnd', e.target.value)}/></div>
-        </div>
-
-        <div className={styles.dhSection}>
-          <button type="button" className={styles.dhToggle} onClick={() => setDhOpen(o => !o)}>
-            🦷 Dental History {dhOpen ? '▲' : '▼'}
-          </button>
-          {form.dentalHistory?.length > 0 && (
-            <div className={styles.dhSelected}>
-              {form.dentalHistory.map(h => <span key={h} className={styles.dhTag}>{h}</span>)}
-            </div>
-          )}
-          {dhOpen && (
-            <div className={styles.dhGrid}>
-              {DENTAL_HISTORY_OPTIONS.map(opt => (
-                <label key={opt} className={styles.dhCheckbox}>
-                  <input type="checkbox" checked={form.dentalHistory?.includes(opt)}
-                    onChange={() => toggleDH(opt)} />
-                  {opt}
-                </label>
-              ))}
-            </div>
-          )}
+          <div className={`${styles.field} ${styles.fullWidth}`}>
+            <label>Medical History</label>
+            <MultiSelectDropdown
+              options={MEDICAL_HISTORY_OPTIONS}
+              selected={form.medicalHistory || []}
+              onChange={val => set('medicalHistory', val)}
+              placeholder="Select medical history..."
+            />
+          </div>
         </div>
 
         <div className={styles.field} style={{marginTop:12}}>
