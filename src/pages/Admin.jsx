@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
-import styles from './Admin.module.css';
 
 const ADMIN_EMAIL = 'rashadalaa19co@gmail.com';
 
