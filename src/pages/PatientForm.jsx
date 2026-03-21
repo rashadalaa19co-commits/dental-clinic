@@ -87,6 +87,10 @@ export default function PatientForm() {
         const ref = await addPatient(user.uid, data);
         nav(`/patients/${ref.id}`);
       }
+    } catch (err) {
+      if (err.message === 'LIMIT_REACHED') {
+        nav('/locked');
+      }
     } finally { setSaving(false); }
   };
 
