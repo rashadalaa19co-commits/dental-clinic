@@ -43,3 +43,4 @@
 
 @media(max-width:768px) { .infoGrid { grid-template-columns:repeat(2,1fr); } }
 @media(max-width:500px) { .infoGrid { grid-template-columns:1fr; } }
+.fullWidth { grid-column: 1 / -1; }
