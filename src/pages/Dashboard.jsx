@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getPatients, getAppointments } from '../services/db';
-import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { getPatients, getAppointments, checkAccess } from '../services/db';
+import { format, isToday, parseISO } from 'date-fns';
 import styles from './Dashboard.module.css';
 
 const STATUS_BADGE = {
@@ -14,11 +14,12 @@ export default function Dashboard() {
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [access, setAccess] = useState(null);
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getPatients(user.uid), getAppointments(user.uid)])
-      .then(([p, a]) => { setPatients(p); setAppts(a); })
+    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid)])
+      .then(([p, a, acc]) => { setPatients(p); setAppts(a); setAccess(acc); })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -36,6 +37,20 @@ export default function Dashboard() {
 
   return (
     <div>
+
+      {access && !access.isActive && (
+        <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:12,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+          <div>
+            <div style={{fontWeight:700,color:'var(--danger)',fontSize:15}}>🔒 Free Trial — {access.patientCount}/2 patients used</div>
+            <div style={{color:'var(--muted)',fontSize:13,marginTop:4}}>Upgrade to unlock unlimited patients!</div>
+          </div>
+          <a href="https://wa.me/201555354570" target="_blank"
+            style={{padding:'8px 18px',background:'var(--success)',color:'#000',borderRadius:8,fontSize:14,fontWeight:600,textDecoration:'none'}}>
+            📱 Contact on WhatsApp
+          </a>
+        </div>
+      )}
+
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Dashboard</h1>
@@ -60,7 +75,6 @@ export default function Dashboard() {
       </div>
 
       <div className={styles.grid2}>
-        {/* Today's appointments */}
         <div className="card">
           <h3 className={styles.sectionTitle}>📅 Today's Appointments</h3>
           {todayAppts.length === 0 ? (
@@ -77,7 +91,6 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Recent patients */}
         <div className="card">
           <h3 className={styles.sectionTitle}>👥 Recent Patients</h3>
           {recent.length === 0 ? (
