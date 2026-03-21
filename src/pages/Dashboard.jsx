@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, getAppointments, checkAccess } from '../services/db';
 import { format, isToday, parseISO } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 const STATUS_BADGE = {
@@ -11,6 +12,7 @@ const STATUS_BADGE = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [patients, setPatients] = useState([]);
   const [appts, setAppts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function Dashboard() {
       </div>
 
       <div className={styles.grid2}>
+        {/* Today's appointments */}
         <div className="card">
           <h3 className={styles.sectionTitle}>📅 Today's Appointments</h3>
           {todayAppts.length === 0 ? (
@@ -81,7 +84,7 @@ export default function Dashboard() {
           ) : todayAppts.map(a => (
             <div key={a.id} className={styles.apptRow}>
               <div className={styles.apptTime}>{a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}</div>
-              <div>
+              <div style={{flex:1}}>
                 <div className={styles.apptName}>{a.patientName}</div>
                 <div className={styles.apptType}>{a.type}</div>
               </div>
@@ -90,8 +93,15 @@ export default function Dashboard() {
           ))}
         </div>
 
+        {/* Recent patients */}
         <div className="card">
-          <h3 className={styles.sectionTitle}>👥 Recent Patients</h3>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.sectionTitle}>👥 Recent Patients</h3>
+            <button onClick={() => nav('/patients/new')}
+              style={{padding:'6px 14px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+              + New
+            </button>
+          </div>
           {recent.length === 0 ? (
             <p className={styles.empty}>No patients yet</p>
           ) : recent.map(p => (
@@ -102,6 +112,10 @@ export default function Dashboard() {
                 <div className={styles.patientMeta}>{p.procedure || '-'} · {p.tooth || ''}</div>
               </div>
               <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>{p.status || '-'}</span>
+              <button onClick={() => nav(`/patients/${p.id}`)}
+                style={{padding:'5px 12px',background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',marginLeft:8}}>
+                Open
+              </button>
             </div>
           ))}
         </div>
