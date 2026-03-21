@@ -4,7 +4,7 @@ import { db } from '../firebase';
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import styles from './Admin.module.css';
 
-const ADMIN_EMAIL = 'YOUR_EMAIL@gmail.com';
+const ADMIN_EMAIL = 'rashadalaa19co@gmail.com';
 
 export default function Admin() {
   const { user } = useAuth();
