@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
     return onAuthStateChanged(auth, u => setUser(u || null));
   }, []);
 
-  const login = () => signInWithPopup(auth, googleProvider);
+  const login = () => signInWithRedirect(auth, googleProvider);
   const logout = () => signOut(auth);
 
   return (
