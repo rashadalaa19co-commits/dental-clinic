@@ -168,9 +168,9 @@ export default function PatientForm() {
   const [surgeryRows, setSurgeryRows] = useState([]);
   const [prothRows, setProthRows] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [nextAppt, setNextAppt] = useState('');
   const [patientAppts, setPatientAppts] = useState([]);
-  const [showAddAppt, setShowAddAppt] = useState(false);
-  const [newAppt, setNewAppt] = useState({ datetime:'', type:'', notes:'' });
+  const [showAppts, setShowAppts] = useState(false);
 
   useEffect(() => {
     if (isEdit) {
@@ -185,7 +185,11 @@ export default function PatientForm() {
         }
       });
       getAppointments(user.uid).then(appts => {
-        setPatientAppts(appts.filter(a => a.patientId === id));
+        const pa = appts.filter(a => a.patientId === id);
+        setPatientAppts(pa);
+        const next = pa.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()))
+          .sort((a,b) => a.datetime.localeCompare(b.datetime))[0];
+        if (next) setNextAppt(next.datetime);
       });
     }
   }, [id]);
@@ -193,19 +197,18 @@ export default function PatientForm() {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleAddAppt = async () => {
-    if (!newAppt.datetime) return alert('Please select date and time');
+    if (!nextAppt) return;
     await addAppointment(user.uid, {
       patientId: id,
       patientName: form.name,
-      datetime: newAppt.datetime,
-      type: newAppt.type,
-      notes: newAppt.notes,
+      datetime: nextAppt,
+      type: form.procedure || '',
       status: 'Scheduled'
     });
     const appts = await getAppointments(user.uid);
-    setPatientAppts(appts.filter(a => a.patientId === id));
-    setShowAddAppt(false);
-    setNewAppt({ datetime:'', type:'', notes:'' });
+    const pa = appts.filter(a => a.patientId === id);
+    setPatientAppts(pa);
+    alert('Appointment saved!');
   };
 
   const handleSave = async () => {
@@ -232,7 +235,6 @@ export default function PatientForm() {
   };
 
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
-  const pastAppts = patientAppts.filter(a => !a.datetime || !isAfter(parseISO(a.datetime), new Date()));
 
   return (
     <div>
@@ -284,6 +286,44 @@ export default function PatientForm() {
             </select>
           </div>
           <div className={styles.field}><label>Start Date</label><input type="date" value={form.dateStart} onChange={e=>set('dateStart',e.target.value)}/></div>
+
+          {/* Appointment bar - like start date */}
+          <div className={styles.field}>
+            <label style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>📅 Next Appointment</span>
+              {isEdit && patientAppts.length > 0 && (
+                <span onClick={() => setShowAppts(s=>!s)} style={{fontSize:11,color:'var(--accent)',cursor:'pointer'}}>
+                  {upcomingAppts.length} upcoming {showAppts ? '▲' : '▼'}
+                </span>
+              )}
+            </label>
+            <div style={{display:'flex',gap:6}}>
+              <input type="datetime-local" value={nextAppt} onChange={e=>setNextAppt(e.target.value)} style={{flex:1}}/>
+              {isEdit && nextAppt && (
+                <button type="button" onClick={handleAddAppt}
+                  style={{padding:'0 12px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:13,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                  + Book
+                </button>
+              )}
+            </div>
+            {/* Show previous appointments */}
+            {showAppts && patientAppts.length > 0 && (
+              <div style={{marginTop:8,background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)',overflow:'hidden'}}>
+                {patientAppts.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
+                  const isPast = !a.datetime || !isAfter(parseISO(a.datetime), new Date());
+                  return (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderBottom: i < patientAppts.length-1 ? '1px solid var(--border)' : 'none',opacity: isPast ? 0.6 : 1}}>
+                      <div style={{width:6,height:6,borderRadius:'50%',background: isPast ? 'var(--muted)' : 'var(--success)',flexShrink:0}}></div>
+                      <div style={{flex:1,fontSize:13}}>{a.datetime ? format(parseISO(a.datetime),'d MMM yyyy · HH:mm') : '--'}</div>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>{a.type||'-'}</span>
+                      <span style={{fontSize:11,color: isPast ? 'var(--muted)' : 'var(--success)'}}>{a.status||'-'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className={styles.field} style={{gridColumn:'1/-1'}}>
             <label>Medical History</label>
             <MultiSelectDropdown options={MEDICAL_HISTORY_OPTIONS} selected={form.medicalHistory||[]} onChange={val=>set('medicalHistory',val)} placeholder="Select medical history..."/>
@@ -306,76 +346,6 @@ export default function PatientForm() {
           ))}
         </div>
       </div>
-
-      {/* Appointments Section - only in edit mode */}
-      {isEdit && (
-        <div className={'card ' + styles.section}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
-            <h3 className={styles.sectionTitle} style={{marginBottom:0}}>📅 Appointments</h3>
-            <button onClick={() => setShowAddAppt(s => !s)}
-              style={{padding:'6px 16px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
-              {showAddAppt ? 'Cancel' : '+ Add Appointment'}
-            </button>
-          </div>
-
-          {showAddAppt && (
-            <div style={{display:'flex',flexWrap:'wrap',gap:12,padding:14,background:'var(--surface2)',borderRadius:10,marginBottom:16,border:'1px solid var(--border)',alignItems:'flex-end'}}>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:180}}>
-                <label style={{fontSize:12,color:'var(--muted)'}}>Date & Time</label>
-                <input type="datetime-local" value={newAppt.datetime} onChange={e=>setNewAppt(a=>({...a,datetime:e.target.value}))}/>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:140}}>
-                <label style={{fontSize:12,color:'var(--muted)'}}>Type</label>
-                <select value={newAppt.type} onChange={e=>setNewAppt(a=>({...a,type:e.target.value}))}>
-                  <option value="">Select...</option>
-                  {['Endo','Operative','Surgery','Proth','Scaling','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
-                </select>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:140}}>
-                <label style={{fontSize:12,color:'var(--muted)'}}>Notes</label>
-                <input value={newAppt.notes} onChange={e=>setNewAppt(a=>({...a,notes:e.target.value}))} placeholder="Optional..."/>
-              </div>
-              <button onClick={handleAddAppt} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer'}}>Save</button>
-            </div>
-          )}
-
-          {upcomingAppts.length > 0 && (
-            <div style={{marginBottom:12}}>
-              <div style={{fontSize:12,color:'var(--success)',fontWeight:600,marginBottom:8,textTransform:'uppercase'}}>Upcoming</div>
-              {upcomingAppts.sort((a,b)=>a.datetime.localeCompare(b.datetime)).map((a,i) => (
-                <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'rgba(63,185,80,0.05)',border:'1px solid rgba(63,185,80,0.2)',borderRadius:8,marginBottom:6}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--success)',flexShrink:0}}></div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:600}}>{format(parseISO(a.datetime),'EEE, d MMM yyyy · HH:mm')}</div>
-                    <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes ? '· '+a.notes : ''}</div>
-                  </div>
-                  <span style={{fontSize:12,color:'var(--success)',background:'rgba(63,185,80,0.1)',padding:'2px 10px',borderRadius:20}}>{a.status||'Scheduled'}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {pastAppts.length > 0 && (
-            <div>
-              <div style={{fontSize:12,color:'var(--muted)',fontWeight:600,marginBottom:8,textTransform:'uppercase'}}>Past</div>
-              {pastAppts.sort((a,b)=>b.datetime?.localeCompare(a.datetime||'')||0).map((a,i) => (
-                <div key={i} style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,marginBottom:6,opacity:0.7}}>
-                  <div style={{width:8,height:8,borderRadius:'50%',background:'var(--muted)',flexShrink:0}}></div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:14,fontWeight:600}}>{a.datetime ? format(parseISO(a.datetime),'EEE, d MMM yyyy · HH:mm') : '--'}</div>
-                    <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes ? '· '+a.notes : ''}</div>
-                  </div>
-                  <span style={{fontSize:12,color:'var(--muted)',background:'var(--surface)',padding:'2px 10px',borderRadius:20}}>{a.status||'-'}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {patientAppts.length === 0 && !showAddAppt && (
-            <p style={{color:'var(--muted)',fontSize:13,textAlign:'center',padding:'16px 0'}}>No appointments yet — add the first one!</p>
-          )}
-        </div>
-      )}
 
       {form.patientType === 'Adult' && (
         <div className={'card ' + styles.section}>
