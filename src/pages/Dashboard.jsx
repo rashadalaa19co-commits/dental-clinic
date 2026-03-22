@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid)])
+    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid, user)])
       .then(([p, a, acc]) => { setPatients(p); setAppts(a); setAccess(acc); })
       .finally(() => setLoading(false));
   }, [user]);
