@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getPatients, deletePatient, updatePatient } from '../services/db';
+import { getPatients, deletePatient, updatePatient, getAppointments, addAppointment, updateAppointment } from '../services/db';
+import { format, parseISO, isAfter } from 'date-fns';
 import styles from './PatientDetail.module.css';
 
 const STATUS_BADGE = {
@@ -24,7 +25,6 @@ function EndoForm({ initial, onSave, onCancel }) {
   const addCanal = idx => setTeeth(t => t.map((x,i) => i===idx ? {...x,canals:[...x.canals,emptyCanal()]} : x));
   const removeCanal = (ti,ci) => setTeeth(t => t.map((x,i) => i===ti ? {...x,canals:x.canals.filter((_,j)=>j!==ci)} : x));
   const updateCanal = (ti,ci,key,val) => setTeeth(t => t.map((x,i) => i===ti ? {...x,canals:x.canals.map((c,j)=>j===ci?{...c,[key]:val}:c)} : x));
-
   return (
     <div style={{padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)'}}>
       {teeth.map((tooth,ti) => (
@@ -78,15 +78,7 @@ const VisitForm = ({ fields, initial, onSave, onCancel }) => {
       {fields.map(f => (
         <div key={f.k} style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:90}}>
           <label style={{fontSize:11,color:'var(--muted)'}}>{f.l}</label>
-          <input
-            type={f.t||'text'}
-            value={data[f.k]||''}
-            onChange={e => {
-              const val = e.target.value;
-              setData(d => ({...d,[f.k]:val}));
-            }}
-            style={{padding:'7px 10px'}}
-          />
+          <input type={f.t||'text'} value={data[f.k]||''} onChange={e=>{const val=e.target.value; setData(d=>({...d,[f.k]:val}));}} style={{padding:'7px 10px'}}/>
         </div>
       ))}
       <div style={{display:'flex',gap:8}}>
@@ -107,9 +99,24 @@ export default function PatientDetail() {
   const [saving, setSaving] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [patientAppts, setPatientAppts] = useState([]);
+  const [showAppts, setShowAppts] = useState(false);
+  const [showAddAppt, setShowAddAppt] = useState(false);
+  const [newAppt, setNewAppt] = useState({ datetime:'', type:'', notes:'' });
+  const [editingApptId, setEditingApptId] = useState(null);
+  const [editApptData, setEditApptData] = useState({});
 
-  const load = () => getPatients(user.uid).then(pts => setPatient(pts.find(p => p.id === id) || null));
-  useEffect(() => { if (user) load(); }, [user, id]);
+  const load = async () => {
+    if (!user) return;
+    const [pts, appts] = await Promise.all([
+      getPatients(user.uid),
+      getAppointments(user.uid)
+    ]);
+    setPatient(pts.find(p => p.id === id) || null);
+    setPatientAppts(appts.filter(a => a.patientId === id));
+  };
+
+  useEffect(() => { load(); }, [user, id]);
 
   const handleDelete = async () => {
     if (!confirm('Delete this patient?')) return;
@@ -172,6 +179,28 @@ export default function PatientDetail() {
     await load();
   };
 
+  const handleAddAppt = async () => {
+    if (!newAppt.datetime) return alert('Please select date and time');
+    await addAppointment(user.uid, {
+      patientId: id,
+      patientName: patient.name,
+      datetime: newAppt.datetime,
+      type: newAppt.type,
+      notes: newAppt.notes,
+      status: 'Scheduled'
+    });
+    await load();
+    setShowAddAppt(false);
+    setNewAppt({ datetime:'', type:'', notes:'' });
+  };
+
+  const handleEditAppt = async () => {
+    await updateAppointment(user.uid, editingApptId, editApptData);
+    await load();
+    setEditingApptId(null);
+    setEditApptData({});
+  };
+
   if (!patient) return <div className={styles.loading}>Loading...</div>;
 
   const info = [
@@ -183,7 +212,6 @@ export default function PatientDetail() {
     ['Tooth', patient.tooth],
     ['Procedure', patient.procedure],
     ['Start', patient.dateStart],
-    ['End', patient.dateEnd],
     ['Alert', patient.alert],
     ['Difficulty', patient.difficulty],
     ['Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : (Array.isArray(patient.dentalHistory) ? patient.dentalHistory.join(', ') : patient.dentalHistory)],
@@ -194,6 +222,9 @@ export default function PatientDetail() {
     { key:'surgeryVisits',   label:'Surgery',   color:'var(--surgery)',   fields:SURGERY_FIELDS },
     { key:'prothVisits',     label:'Proth',     color:'var(--proth)',     fields:PROTH_FIELDS },
   ];
+
+  const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
+  const pastAppts = patientAppts.filter(a => !a.datetime || !isAfter(parseISO(a.datetime), new Date()));
 
   return (
     <div>
@@ -224,6 +255,103 @@ export default function PatientDetail() {
             </div>
           ) : null)}
         </div>
+
+        {/* Appointment bar */}
+        <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid var(--border)'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <span style={{fontSize:13,fontWeight:600,color:'var(--accent)'}}>📅 Appointments</span>
+              <span style={{fontSize:12,color:'var(--muted)'}}>{patientAppts.length} total · {upcomingAppts.length} upcoming</span>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              {patientAppts.length > 0 && (
+                <button onClick={() => setShowAppts(s=>!s)}
+                  style={{padding:'4px 12px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:12,cursor:'pointer'}}>
+                  {showAppts ? 'Hide' : 'Show All'}
+                </button>
+              )}
+              <button onClick={() => setShowAddAppt(s=>!s)}
+                style={{padding:'4px 14px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                {showAddAppt ? 'Cancel' : '+ Add'}
+              </button>
+            </div>
+          </div>
+
+          {/* Next upcoming appt */}
+          {upcomingAppts.length > 0 && !showAppts && (
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',background:'rgba(63,185,80,0.05)',border:'1px solid rgba(63,185,80,0.2)',borderRadius:8}}>
+              <div style={{width:6,height:6,borderRadius:'50%',background:'var(--success)'}}></div>
+              <span style={{fontSize:13,fontWeight:600}}>Next: {format(parseISO(upcomingAppts.sort((a,b)=>a.datetime.localeCompare(b.datetime))[0].datetime),'EEE, d MMM yyyy · HH:mm')}</span>
+              <span style={{fontSize:12,color:'var(--muted)'}}>{upcomingAppts[0].type||''}</span>
+            </div>
+          )}
+
+          {/* Add appointment form */}
+          {showAddAppt && (
+            <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:8,marginTop:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
+              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:160}}>
+                <label style={{fontSize:11,color:'var(--muted)'}}>Date & Time</label>
+                <input type="datetime-local" value={newAppt.datetime} onChange={e=>setNewAppt(a=>({...a,datetime:e.target.value}))}/>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
+                <label style={{fontSize:11,color:'var(--muted)'}}>Type</label>
+                <select value={newAppt.type} onChange={e=>setNewAppt(a=>({...a,type:e.target.value}))}>
+                  <option value="">Select...</option>
+                  {['Endo','Operative','Surgery','Proth','Scaling','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
+                <label style={{fontSize:11,color:'var(--muted)'}}>Notes</label>
+                <input value={newAppt.notes} onChange={e=>setNewAppt(a=>({...a,notes:e.target.value}))} placeholder="Optional..."/>
+              </div>
+              <button onClick={handleAddAppt} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+            </div>
+          )}
+
+          {/* All appointments list */}
+          {showAppts && (
+            <div style={{marginTop:8,background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)',overflow:'hidden'}}>
+              {patientAppts.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
+                const isPast = !a.datetime || !isAfter(parseISO(a.datetime), new Date());
+                return (
+                  <div key={a.id||i}>
+                    {editingApptId === a.id ? (
+                      <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--bg)',alignItems:'flex-end',borderBottom:'1px solid var(--border)'}}>
+                        <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:160}}>
+                          <label style={{fontSize:11,color:'var(--muted)'}}>Date & Time</label>
+                          <input type="datetime-local" value={editApptData.datetime||''} onChange={e=>setEditApptData(d=>({...d,datetime:e.target.value}))}/>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
+                          <label style={{fontSize:11,color:'var(--muted)'}}>Type</label>
+                          <select value={editApptData.type||''} onChange={e=>setEditApptData(d=>({...d,type:e.target.value}))}>
+                            <option value="">Select...</option>
+                            {['Endo','Operative','Surgery','Proth','Scaling','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
+                          </select>
+                        </div>
+                        <div style={{display:'flex',gap:8}}>
+                          <button onClick={handleEditAppt} style={{padding:'8px 14px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+                          <button onClick={()=>setEditingApptId(null)} style={{padding:'8px 10px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,cursor:'pointer'}}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px',borderBottom: i < patientAppts.length-1 ? '1px solid var(--border)' : 'none',opacity: isPast ? 0.6 : 1}}>
+                        <div style={{width:6,height:6,borderRadius:'50%',background: isPast ? 'var(--muted)' : 'var(--success)',flexShrink:0}}></div>
+                        <div style={{flex:1}}>
+                          <div style={{fontSize:13,fontWeight:600}}>{a.datetime ? format(parseISO(a.datetime),'EEE, d MMM yyyy · HH:mm') : '--'}</div>
+                          <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes?'· '+a.notes:''}</div>
+                        </div>
+                        <span style={{fontSize:11,padding:'2px 8px',borderRadius:20,background: isPast ? 'var(--surface)' : 'rgba(63,185,80,0.1)',color: isPast ? 'var(--muted)' : 'var(--success)'}}>{a.status||'-'}</span>
+                        <button onClick={()=>{setEditingApptId(a.id);setEditApptData({datetime:a.datetime||'',type:a.type||'',notes:a.notes||''});}}
+                          style={{padding:'3px 8px',background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'none',borderRadius:6,fontSize:11,cursor:'pointer'}}>Edit</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {patient.notes && (
           <div className={styles.notes}>
             <div className={styles.infoLabel}>Notes</div>
@@ -232,9 +360,9 @@ export default function PatientDetail() {
         )}
       </div>
 
+      {/* Visits - Adult only */}
       {patient.patientType === 'Adult' && (
         <>
-          {/* ENDO */}
           <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--endo)'}}>
             <div className={styles.visitHeader}>
               <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
@@ -288,7 +416,6 @@ export default function PatientDetail() {
             ))}
           </div>
 
-          {/* OTHER VISITS */}
           {visitConfigs.map(cfg => {
             const visits = patient[cfg.key] || [];
             return (
@@ -343,7 +470,6 @@ export default function PatientDetail() {
             {showAddPhoto ? 'Cancel' : '+ Add Photo'}
           </button>
         </div>
-
         {showAddPhoto && (
           <div style={{display:'flex',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',flexWrap:'wrap',alignItems:'flex-end'}}>
             <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minWidth:200}}>
@@ -354,17 +480,12 @@ export default function PatientDetail() {
             <button onClick={handleAddPhoto} style={{padding:'9px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:14,fontWeight:600,cursor:'pointer'}}>Save</button>
           </div>
         )}
-
-        {(patient.photos||[]).length === 0 && !showAddPhoto && (
-          <p className={styles.noVisits}>No photos yet</p>
-        )}
-
+        {(patient.photos||[]).length === 0 && !showAddPhoto && <p className={styles.noVisits}>No photos yet</p>}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:12,marginTop:8}}>
           {(patient.photos||[]).map((url, i) => (
             <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1'}}>
-              <img src={url} alt={'Photo ' + (i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
-                onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }}
-              />
+              <img src={url} alt={'Photo '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
+                onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex';}}/>
               <div style={{display:'none',alignItems:'center',justifyContent:'center',height:'100%',background:'var(--surface2)',color:'var(--muted)',fontSize:12,flexDirection:'column',gap:8}}>
                 <span>🔗</span>
                 <a href={url} target="_blank" style={{color:'var(--accent)',fontSize:11}}>Open Link</a>
