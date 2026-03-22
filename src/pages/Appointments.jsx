@@ -37,10 +37,10 @@ function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, STATUS_OPTIONS }) 
             const d = a.datetime ? parseISO(a.datetime) : null;
             const isPast = d && !isAfter(d, new Date());
             return (
-              <div key={a.id||i} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+             <div key={a.id||i} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:isPast?'var(--muted)':'var(--success)',flexShrink:0}}></div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:13,fontWeight:600}}>{d?format(d,'EEE, d MMM yyyy · HH:mm'):'--'}</div>
+                <div style={{flex:1,minWidth:120}}>
+  <div style={{fontSize:13,fontWeight:600}}>{d?format(d,'d MMM · HH:mm'):'--'}</div>
                   <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes?'· '+a.notes:''}</div>
                 </div>
                 <select value={a.status||'Scheduled'} onChange={e=>onStatus(a.id,e.target.value)}
