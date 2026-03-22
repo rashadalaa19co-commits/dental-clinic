@@ -178,7 +178,7 @@ export default function PatientForm() {
         const p = patients.find(x => x.id === id);
         if (p) {
           setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
-          setEndoRows(p.endoVisits || []);
+          setEndoRows((p.endoVisits || []).map(t => ({...t, canals: t.canals || [{canal:"",wl:"",maf:"",note:""}]})));
           setOperativeRows(p.operativeVisits || []);
           setSurgeryRows(p.surgeryVisits || []);
           setProthRows(p.prothVisits || []);
