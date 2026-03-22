@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getAppointments, addAppointment, updateAppointment, deleteAppointment, getPatients } from '../services/db';
-import { format, isToday, isTomorrow, parseISO, isAfter, startOfDay } from 'date-fns';
+import { format, isToday, isTomorrow, parseISO, isAfter, startOfDay, differenceInMinutes } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import styles from './Appointments.module.css';
 
 const STATUS_OPTIONS = ['Scheduled','Confirmed','Done','Cancelled','No Show'];
 
 export default function Appointments() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [appts, setAppts] = useState([]);
   const [patients, setPatients] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [editingAppt, setEditingAppt] = useState(null);
   const [form, setForm] = useState({ patientName:'', patientId:'', datetime:'', type:'', status:'Scheduled', notes:'' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('upcoming');
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [conflict, setConflict] = useState(null);
 
   const load = () =>
     Promise.all([getAppointments(user.uid), getPatients(user.uid)])
@@ -28,19 +33,62 @@ export default function Appointments() {
     setForm(f => ({ ...f, patientId: pid, patientName: p?.name || '' }));
   };
 
-  const handleSave = async () => {
+  const checkConflict = (datetime) => {
+    if (!datetime) return null;
+    const newTime = parseISO(datetime);
+    for (const appt of appts) {
+      if (editingAppt && appt.id === editingAppt.id) continue;
+      if (!appt.datetime) continue;
+      const existing = parseISO(appt.datetime);
+      const diff = Math.abs(differenceInMinutes(newTime, existing));
+      if (diff < 60) {
+        return {
+          patient: appt.patientName,
+          time: format(existing, 'HH:mm'),
+          diff: diff
+        };
+      }
+    }
+    return null;
+  };
+
+  const handleDateChange = (datetime) => {
+    set('datetime', datetime);
+    const c = checkConflict(datetime);
+    setConflict(c);
+  };
+
+  const handleSave = async (force = false) => {
     if (!form.patientName || !form.datetime) return alert('Please fill patient and date/time');
+    
+    if (!force && conflict) return;
+
     setSaving(true);
-    await addAppointment(user.uid, form);
+    if (editingAppt) {
+      await updateAppointment(user.uid, editingAppt.id, form);
+    } else {
+      await addAppointment(user.uid, form);
+    }
     await load();
     setShowForm(false);
+    setEditingAppt(null);
+    setConflict(null);
     setForm({ patientName:'', patientId:'', datetime:'', type:'', status:'Scheduled', notes:'' });
     setSaving(false);
   };
 
-  const handleStatus = async (id, status) => {
-    await updateAppointment(user.uid, id, { status });
-    load();
+  const handleEdit = (appt) => {
+    setEditingAppt(appt);
+    setForm({
+      patientName: appt.patientName,
+      patientId: appt.patientId || '',
+      datetime: appt.datetime,
+      type: appt.type || '',
+      status: appt.status || 'Scheduled',
+      notes: appt.notes || ''
+    });
+    setShowForm(true);
+    setConflict(null);
   };
 
   const handleDelete = async (id) => {
@@ -49,7 +97,30 @@ export default function Appointments() {
     load();
   };
 
+  const handleStatus = async (id, status) => {
+    await updateAppointment(user.uid, id, { status });
+    load();
+  };
+
+  const cancelForm = () => {
+    setShowForm(false);
+    setEditingAppt(null);
+    setConflict(null);
+    setForm({ patientName:'', patientId:'', datetime:'', type:'', status:'Scheduled', notes:'' });
+  };
+
   const now = new Date();
+
+  // Group appointments by patient
+  const patientAppts = {};
+  appts.forEach(a => {
+    const key = a.patientId || a.patientName;
+    if (!patientAppts[key]) {
+      patientAppts[key] = { name: a.patientName, id: a.patientId, appts: [] };
+    }
+    patientAppts[key].appts.push(a);
+  });
+
   const filtered = appts.filter(a => {
     if (!a.datetime) return filter === 'all';
     const d = parseISO(a.datetime);
@@ -61,6 +132,13 @@ export default function Appointments() {
 
   const todayCount = appts.filter(a => a.datetime && isToday(parseISO(a.datetime))).length;
 
+  // Get patient folders
+  const patientFolders = Object.values(patientAppts).sort((a,b) => {
+    const lastA = a.appts[a.appts.length-1]?.datetime || '';
+    const lastB = b.appts[b.appts.length-1]?.datetime || '';
+    return lastB.localeCompare(lastA);
+  });
+
   return (
     <div>
       <div className={styles.topbar}>
@@ -68,15 +146,15 @@ export default function Appointments() {
           <h1 className={styles.title}>Appointments</h1>
           <p className={styles.sub}>{todayCount} today · {appts.length} total</p>
         </div>
-        <button className={styles.addBtn} onClick={() => setShowForm(s => !s)}>
-          {showForm ? '✕ Close' : '➕ New Appointment'}
+        <button className={styles.addBtn} onClick={() => { setShowForm(s => !s); setEditingAppt(null); setConflict(null); }}>
+          {showForm && !editingAppt ? '✕ Close' : '➕ New Appointment'}
         </button>
       </div>
 
-      {/* New appointment form */}
+      {/* Form */}
       {showForm && (
         <div className={`card ${styles.formCard}`}>
-          <h3 className={styles.formTitle}>New Appointment</h3>
+          <h3 className={styles.formTitle}>{editingAppt ? '✏️ Edit Appointment' : '➕ New Appointment'}</h3>
           <div className={styles.formGrid}>
             <div className={styles.field}>
               <label>Patient *</label>
@@ -91,7 +169,7 @@ export default function Appointments() {
             </div>
             <div className={styles.field}>
               <label>Date & Time *</label>
-              <input type="datetime-local" value={form.datetime} onChange={e => set('datetime', e.target.value)}/>
+              <input type="datetime-local" value={form.datetime} onChange={e => handleDateChange(e.target.value)}/>
             </div>
             <div className={styles.field}>
               <label>Type</label>
@@ -112,31 +190,57 @@ export default function Appointments() {
               <input value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Optional notes..."/>
             </div>
           </div>
-          <div className={styles.formActions}>
-            <button className={styles.cancelBtn} onClick={() => setShowForm(false)}>Cancel</button>
-            <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : '💾 Save Appointment'}
-            </button>
-          </div>
+
+          {/* Conflict Warning */}
+          {conflict && (
+            <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:10,padding:'14px 18px',margin:'12px 0'}}>
+              <div style={{fontWeight:700,color:'var(--danger)',fontSize:15,marginBottom:6}}>
+                ⚠️ Time Conflict Detected!
+              </div>
+              <div style={{color:'var(--muted)',fontSize:14,marginBottom:12}}>
+                <strong style={{color:'var(--text)'}}>{conflict.patient}</strong> has an appointment at <strong style={{color:'var(--text)'}}>{conflict.time}</strong> — only <strong style={{color:'var(--warning)'}}>{conflict.diff} minutes</strong> apart (minimum 1 hour required)
+              </div>
+              <div style={{display:'flex',gap:10}}>
+                <button onClick={() => handleSave(true)} style={{padding:'8px 20px',background:'var(--danger)',color:'white',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                  Book Anyway
+                </button>
+                <button onClick={() => { set('datetime',''); setConflict(null); }} style={{padding:'8px 20px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:14,cursor:'pointer'}}>
+                  Choose Another Time
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!conflict && (
+            <div className={styles.formActions}>
+              <button className={styles.cancelBtn} onClick={cancelForm}>Cancel</button>
+              <button className={styles.saveBtn} onClick={() => handleSave(false)} disabled={saving}>
+                {saving ? 'Saving...' : editingAppt ? '💾 Save Changes' : '💾 Save Appointment'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Filter tabs */}
-      <div className={styles.tabs}>
-        {['today','upcoming','past','all'].map(f => (
-          <button key={f} className={`${styles.tab} ${filter === f ? styles.activeTab : ''}`}
-            onClick={() => setFilter(f)}>
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-          </button>
-        ))}
+      {/* Tabs */}
+      <div style={{display:'flex',gap:8,marginBottom:20}}>
+        <div className={styles.tabs}>
+          {['today','upcoming','past','all'].map(f => (
+            <button key={f} className={`${styles.tab} ${filter === f ? styles.activeTab : ''}`}
+              onClick={() => setFilter(f)}>
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Appointments list */}
-      {filtered.length === 0 ? (
-        <p className={styles.empty}>No appointments</p>
-      ) : (
-        <div className={styles.list}>
-          {filtered.map(a => {
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:20}}>
+        {/* Left: Appointment list */}
+        <div>
+          <h3 style={{fontSize:15,fontWeight:700,marginBottom:12,color:'var(--muted)'}}>📅 TIMELINE</h3>
+          {filtered.length === 0 ? (
+            <p className={styles.empty}>No appointments</p>
+          ) : filtered.map(a => {
             const d = a.datetime ? parseISO(a.datetime) : null;
             const isNow = d && isToday(d);
             const isTom = d && isTomorrow(d);
@@ -154,7 +258,6 @@ export default function Appointments() {
                     {a.type && <span className={styles.apptType}>{a.type}</span>}
                     {isNow && <span className={styles.todayTag}>Today</span>}
                     {isTom && <span className={styles.tomTag}>Tomorrow</span>}
-                    {a.notes && <span className={styles.apptNotes}>{a.notes}</span>}
                   </div>
                 </div>
                 <div className={styles.apptRight}>
@@ -162,8 +265,77 @@ export default function Appointments() {
                     onChange={e => handleStatus(a.id, e.target.value)}>
                     {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
                   </select>
+                  <button onClick={() => handleEdit(a)} style={{background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,padding:'5px 10px',fontSize:12,cursor:'pointer'}}>✏️</button>
+                  {a.patientId && <button onClick={() => nav(`/patients/${a.patientId}`)} style={{background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,padding:'5px 10px',fontSize:12,cursor:'pointer'}}>Open</button>}
                   <button className={styles.delApptBtn} onClick={() => handleDelete(a.id)}>🗑️</button>
                 </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right: Patient folders */}
+        <div>
+          <h3 style={{fontSize:15,fontWeight:700,marginBottom:12,color:'var(--muted)'}}>📁 PATIENT FOLDERS</h3>
+          {patientFolders.length === 0 ? (
+            <p className={styles.empty}>No appointments yet</p>
+          ) : patientFolders.map(pf => (
+            <PatientFolder key={pf.id || pf.name} pf={pf} nav={nav} onEdit={handleEdit} onDelete={handleDelete} onStatus={handleStatus} STATUS_OPTIONS={STATUS_OPTIONS}/>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, STATUS_OPTIONS }) {
+  const [open, setOpen] = useState(false);
+  const upcoming = pf.appts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date())).length;
+  const past = pf.appts.length - upcoming;
+
+  return (
+    <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,marginBottom:10,overflow:'hidden'}}>
+      <div onClick={() => setOpen(o => !o)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer',transition:'background 0.15s'}}
+        onMouseEnter={e => e.currentTarget.style.background='var(--surface2)'}
+        onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+        <div style={{width:40,height:40,borderRadius:'50%',background:'rgba(0,212,255,0.15)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:16,flexShrink:0}}>
+          {pf.name?.[0]?.toUpperCase()}
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontWeight:600,fontSize:14}}>{pf.name}</div>
+          <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>
+            {past} past · {upcoming} upcoming
+          </div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          {pf.id && (
+            <button onClick={e=>{e.stopPropagation();nav(`/patients/${pf.id}`);}}
+              style={{padding:'4px 10px',background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>
+              Profile
+            </button>
+          )}
+          <span style={{color:'var(--muted)',fontSize:18}}>{open ? '▲' : '▼'}</span>
+        </div>
+      </div>
+
+      {open && (
+        <div style={{borderTop:'1px solid var(--border)',padding:'8px 16px 12px'}}>
+          {pf.appts.sort((a,b) => (b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
+            const d = a.datetime ? parseISO(a.datetime) : null;
+            const isPast = d && !isAfter(d, new Date());
+            return (
+              <div key={a.id || i} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background: isPast ? 'var(--muted)' : 'var(--success)',flexShrink:0}}></div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:13,fontWeight:600}}>{d ? format(d,'EEE, d MMM yyyy · HH:mm') : '--'}</div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{a.type || '-'} {a.notes ? '· ' + a.notes : ''}</div>
+                </div>
+                <select value={a.status||'Scheduled'} onChange={e=>onStatus(a.id,e.target.value)}
+                  style={{padding:'4px 8px',fontSize:12,borderRadius:6,minWidth:100}}>
+                  {STATUS_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+                <button onClick={() => onEdit(a)} style={{background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'none',borderRadius:6,padding:'4px 8px',fontSize:12,cursor:'pointer'}}>✏️</button>
+                <button onClick={() => onDelete(a.id)} style={{background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',fontSize:12,cursor:'pointer'}}>🗑️</button>
               </div>
             );
           })}
