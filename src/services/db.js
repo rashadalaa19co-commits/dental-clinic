@@ -5,17 +5,30 @@ import {
 import { db } from '../firebase';
 
 const FREE_LIMIT = 2;
-
 const col = (uid, name) => collection(db, 'clinics', uid, name);
 
-export async function checkAccess(uid) {
+export async function checkAccess(uid, userInfo) {
   const ref = doc(db, 'clinics', uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    await setDoc(ref, { isActive: false, patientCount: 0, createdAt: serverTimestamp() });
+    await setDoc(ref, {
+      isActive: false,
+      patientCount: 0,
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
+      displayName: userInfo?.displayName || '',
+      email: userInfo?.email || '',
+      photoURL: userInfo?.photoURL || '',
+    });
     return { allowed: true, isActive: false, patientCount: 0 };
   }
   const data = snap.data();
+  await updateDoc(ref, {
+    lastLogin: serverTimestamp(),
+    displayName: userInfo?.displayName || data.displayName || '',
+    email: userInfo?.email || data.email || '',
+    photoURL: userInfo?.photoURL || data.photoURL || '',
+  });
   const isActive = data.isActive || false;
   const patientCount = data.patientCount || 0;
   const allowed = isActive || patientCount < FREE_LIMIT;
