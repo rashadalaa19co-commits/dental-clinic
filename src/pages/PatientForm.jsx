@@ -341,7 +341,7 @@ export default function PatientForm() {
           {['Adult','Bedo'].map(t => (
             <label key={t} className={styles.typeOption + ' ' + (form.patientType===t?styles.typeActive:'')}>
               <input type="radio" name="type" value={t} checked={form.patientType===t} onChange={()=>set('patientType',t)}/>
-              {t==='Adult'?'Adult':'Bedo (Child)'}
+              {t==='Adult'?'Adult':'Bedo (Soon)'}
             </label>
           ))}
         </div>
