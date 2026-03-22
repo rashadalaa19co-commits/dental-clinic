@@ -42,7 +42,7 @@ export default function Dashboard() {
       {access && !access.isActive && (
         <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:12,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
           <div>
-            <div style={{fontWeight:700,color:'var(--danger)',fontSize:15}}>🔒 Free Trial — {access.patientCount}/2 patients used</div>
+            <div style={{fontWeight:700,color:'var(--danger)',fontSize:15}}>🔒 Free Trial — {access.patientCount}/5 patients used</div>
             <div style={{color:'var(--muted)',fontSize:13,marginTop:4}}>Upgrade to unlock unlimited patients!</div>
           </div>
           <a href="https://wa.me/201555354570" target="_blank"
