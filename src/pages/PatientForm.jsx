@@ -31,6 +31,7 @@ const emptyRow = fields => Object.fromEntries(fields.map(f => [f.key, '']));
 const emptyCanal = () => ({ canal:'', wl:'', maf:'', note:'' });
 const emptyTooth = () => ({ toothName:'', diagnosis:'', clamp:'', referencePoint:'', date:'', canals:[emptyCanal()] });
 
+// --- Components ---
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -150,6 +151,7 @@ function VisitSection({ title, color, rows, onAdd, onUpdate, onRemove, fields })
   );
 }
 
+// --- Main Component ---
 export default function PatientForm() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -161,8 +163,13 @@ export default function PatientForm() {
     patientType:'', medicalHistory:[],
     chiefComplaint:'', tooth:'', procedure:'',
     status:'Not started', difficulty:'', alert:'None',
-    dateStart:'', notes:''
+    dateStart:'', notes:'', xRayUrl: ''
   });
+  
+  // States for Cloudinary
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
   const [endoRows, setEndoRows] = useState([]);
   const [operativeRows, setOperativeRows] = useState([]);
   const [surgeryRows, setSurgeryRows] = useState([]);
@@ -192,9 +199,31 @@ export default function PatientForm() {
         if (next) setNextAppt(next.datetime);
       });
     }
-  }, [id]);
+  }, [id, user.uid]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // Function to upload image to Cloudinary
+  const uploadImageToCloudinary = async () => {
+    if (!selectedFile) return form.xRayUrl || "";
+    
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("upload_preset", "ntjnefxv");
+    formData.append("cloud_name", "dvpbbawh2");
+
+    try {
+      const response = await fetch(
+        "https://api.cloudinary.com/v1_1/dvpbbawh2/image/upload",
+        { method: "POST", body: formData }
+      );
+      const data = await response.json();
+      return data.secure_url;
+    } catch (error) {
+      console.error("Cloudinary Error:", error);
+      throw new Error("Failed to upload image");
+    }
+  };
 
   const handleAddAppt = async () => {
     if (!nextAppt) return;
@@ -214,9 +243,22 @@ export default function PatientForm() {
   const handleSave = async () => {
     if (!form.name.trim()) return alert('Please enter patient name');
     if (!form.patientType) return alert('Please select patient type');
+    
     setSaving(true);
     try {
-      const data = { ...form, endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
+      // 1. Upload image if exists
+      const xRayUrl = await uploadImageToCloudinary();
+      
+      // 2. Prepare data with image URL
+      const data = { 
+        ...form, 
+        xRayUrl, 
+        endoVisits: endoRows, 
+        operativeVisits: operativeRows, 
+        surgeryVisits: surgeryRows, 
+        prothVisits: prothRows 
+      };
+
       if (isEdit) {
         await updatePatient(user.uid, id, data);
         nav('/patients/' + id);
@@ -228,7 +270,7 @@ export default function PatientForm() {
       if (err.message === 'LIMIT_REACHED') {
         nav('/locked');
       } else {
-        alert('Error saving patient!');
+        alert('Error saving patient or image!');
         console.error(err);
       }
     } finally { setSaving(false); }
@@ -272,6 +314,15 @@ export default function PatientForm() {
               {['Not started','In progress','Done','Follow Up','Lap waiting'].map(o=><option key={o}>{o}</option>)}
             </select>
           </div>
+          
+          {/* --- Image Upload Field --- */}
+          <div className={styles.field} style={{gridColumn:'1/3', background:'rgba(0,212,255,0.05)', padding: '10px', borderRadius: '8px', border: '1px dashed var(--border)'}}>
+            <label>📸 Upload X-Ray / Photos</label>
+            <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files[0])} />
+            {selectedFile && <p style={{fontSize:11, color:'var(--accent)', marginTop:4}}>New file: {selectedFile.name}</p>}
+            {form.xRayUrl && !selectedFile && <p style={{fontSize:11, color:'var(--success)', marginTop:4}}>✅ Has existing image</p>}
+          </div>
+
           <div className={styles.field}>
             <label>Difficulty</label>
             <select value={form.difficulty} onChange={e=>set('difficulty',e.target.value)}>
@@ -287,7 +338,6 @@ export default function PatientForm() {
           </div>
           <div className={styles.field}><label>Start Date</label><input type="date" value={form.dateStart} onChange={e=>set('dateStart',e.target.value)}/></div>
 
-          {/* Appointment bar - like start date */}
           <div className={styles.field}>
             <label style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
               <span>📅 Next Appointment</span>
@@ -306,7 +356,6 @@ export default function PatientForm() {
                 </button>
               )}
             </div>
-            {/* Show previous appointments */}
             {showAppts && patientAppts.length > 0 && (
               <div style={{marginTop:8,background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)',overflow:'hidden'}}>
                 {patientAppts.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
