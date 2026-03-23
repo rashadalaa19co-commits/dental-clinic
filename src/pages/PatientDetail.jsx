@@ -401,7 +401,7 @@ export default function PatientDetail() {
                   <>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
                       <div style={{display:'flex',flexWrap:'wrap',gap:12}}>
-                        {[['Tooth',tooth.toothName],['Diagnosis',tooth.diagnosis],['Clamp',tooth.clamp],['Ref Point',tooth.referencePoint],['Date',tooth.date]].map(([label,val]) => val ? (
+                        {[ ['Tooth',tooth.toothName],['Diagnosis',tooth.diagnosis],['Clamp',tooth.clamp],['Ref Point',tooth.referencePoint],['Date',tooth.date]].map(([label,val]) => val ? (
                           <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
                             <span style={{fontSize:10,color:'var(--muted)',textTransform:'uppercase'}}>{label}</span>
                             <span style={{fontSize:14,fontWeight:500}}>{val}</span>
@@ -419,7 +419,7 @@ export default function PatientDetail() {
                         {tooth.canals.map((canal,ci) => (
                           <div key={ci} style={{display:'flex',flexWrap:'wrap',gap:10,padding:8,background:'var(--bg)',borderRadius:8,marginBottom:6}}>
                             <span style={{fontSize:12,color:'var(--endo)',fontWeight:700,minWidth:20}}>{ci+1}</span>
-                            {[['Canal',canal.canal],['WL',canal.wl],['MAF',canal.maf],['Note',canal.note]].map(([label,val]) => val ? (
+                            {[ ['Canal',canal.canal],['WL',canal.wl],['MAF',canal.maf],['Note',canal.note]].map(([label,val]) => val ? (
                               <div key={label} style={{display:'flex',flexDirection:'column',gap:2}}>
                                 <span style={{fontSize:10,color:'var(--muted)'}}>{label}</span>
                                 <span style={{fontSize:13,fontWeight:500}}>{val}</span>
@@ -479,7 +479,7 @@ export default function PatientDetail() {
         </>
       )}
 
-      {/* PHOTOS */}
+      {/* PHOTOS - Moved to the end of the page */}
       <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--accent)'}}>
         <div className={styles.visitHeader}>
           <span className={styles.visitLabel} style={{color:'var(--accent)'}}>📸 Case Photos</span>
@@ -502,15 +502,11 @@ export default function PatientDetail() {
         {(patient.photos||[]).length === 0 && !showAddPhoto && <p className={styles.noVisits}>No photos yet</p>}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:12,marginTop:8}}>
           {(patient.photos||[]).map((url, i) => (
-            <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1'}}>
-              <img src={url} alt={'Photo '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
-                onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex';}}/>
-              <div style={{display:'none',alignItems:'center',justifyContent:'center',height:'100%',background:'var(--surface2)',color:'var(--muted)',fontSize:12,flexDirection:'column',gap:8}}>
-                <span>🔗</span>
-                <a href={url} target="_blank" style={{color:'var(--accent)',fontSize:11}}>Open Link</a>
-              </div>
-              <button onClick={()=>handleDeletePhoto(i)} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',border:'none',borderRadius:'50%',width:24,height:24,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>X</button>
-              <a href={url} target="_blank" style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',borderRadius:6,padding:'2px 8px',fontSize:11,textDecoration:'none'}}>Open</a>
+            <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1/1'}}>
+              <a href={url} target="_blank" rel="noreferrer">
+                <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+              </a>
+              <button onClick={() => handleDeletePhoto(i)} style={{position:'absolute',top:5,right:5,background:'red',color:'white',border:'none',borderRadius:'50%',width:20,height:20,cursor:'pointer',zIndex:1}}>×</button>
             </div>
           ))}
         </div>
