@@ -99,13 +99,14 @@ export default function PatientDetail() {
   const [saving, setSaving] = useState(false);
   const [newPhotoUrl, setNewPhotoUrl] = useState('');
   const [showAddPhoto, setShowAddPhoto] = useState(false);
+  const [allAppts, setAllAppts] = useState([]);
   const [patientAppts, setPatientAppts] = useState([]);
   const [showAppts, setShowAppts] = useState(false);
   const [showAddAppt, setShowAddAppt] = useState(false);
   const [newAppt, setNewAppt] = useState({ datetime:'', type:'', notes:'' });
+  const [apptConflict, setApptConflict] = useState(null);
   const [editingApptId, setEditingApptId] = useState(null);
   const [editApptData, setEditApptData] = useState({});
-  const [apptConflict, setApptConflict] = useState(null);
 
   const load = async () => {
     if (!user) return;
@@ -114,10 +115,35 @@ export default function PatientDetail() {
       getAppointments(user.uid)
     ]);
     setPatient(pts.find(p => p.id === id) || null);
+    setAllAppts(appts);
     setPatientAppts(appts.filter(a => a.patientId === id));
   };
 
   useEffect(() => { load(); }, [user, id]);
+
+  const checkConflict = (datetime) => {
+    if (!datetime) return null;
+    const newTime = parseISO(datetime);
+    for (const appt of allAppts) {
+      if (appt.patientId === id) continue;
+      if (!appt.datetime) continue;
+      const existing = parseISO(appt.datetime);
+      const diff = Math.abs(differenceInMinutes(newTime, existing));
+      if (diff < 60) {
+        return {
+          patient: appt.patientName,
+          time: format(existing, 'HH:mm'),
+          diff: diff
+        };
+      }
+    }
+    return null;
+  };
+
+  const handleDateChange = (datetime) => {
+    setNewAppt(a => ({...a, datetime}));
+    setApptConflict(checkConflict(datetime));
+  };
 
   const handleDelete = async () => {
     if (!confirm('Delete this patient?')) return;
@@ -180,26 +206,10 @@ export default function PatientDetail() {
     await load();
   };
 
-  const checkConflict = (datetime) => {
-    if (!datetime) return null;
-    const newTime = parseISO(datetime);
-    for (const appt of patientAppts) {
-      if (!appt.datetime) continue;
-      const existing = parseISO(appt.datetime);
-      const diff = Math.abs(differenceInMinutes(newTime, existing));
-      if (diff < 60) return { patient: appt.patientName || patient.name, time: format(existing, 'HH:mm'), diff };
-    }
-    return null;
-  };
-
-  const handleDateChange = (datetime) => {
-    setNewAppt(a => ({...a, datetime}));
-    setApptConflict(checkConflict(datetime));
-  };
-
   const handleAddAppt = async (force = false) => {
     if (!newAppt.datetime) return alert('Please select date and time');
     if (!force && apptConflict) return;
+    setApptConflict(null);
     await addAppointment(user.uid, {
       patientId: id,
       patientName: patient.name,
@@ -296,7 +306,6 @@ export default function PatientDetail() {
             </div>
           </div>
 
-          {/* Next upcoming appt */}
           {upcomingAppts.length > 0 && !showAppts && (
             <div style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',background:'rgba(63,185,80,0.05)',border:'1px solid rgba(63,185,80,0.2)',borderRadius:8}}>
               <div style={{width:6,height:6,borderRadius:'50%',background:'var(--success)'}}></div>
@@ -307,23 +316,41 @@ export default function PatientDetail() {
 
           {/* Add appointment form */}
           {showAddAppt && (
-            <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:8,marginTop:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:160}}>
-                <label style={{fontSize:11,color:'var(--muted)'}}>Date & Time</label>
-                <input type="datetime-local" value={newAppt.datetime} onChange={e=>handleDateChange(e.target.value)}/>
+            <div style={{marginTop:8}}>
+              <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
+                <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:160}}>
+                  <label style={{fontSize:11,color:'var(--muted)'}}>Date & Time</label>
+                  <input type="datetime-local" value={newAppt.datetime} onChange={e=>handleDateChange(e.target.value)}/>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
+                  <label style={{fontSize:11,color:'var(--muted)'}}>Type</label>
+                  <select value={newAppt.type} onChange={e=>setNewAppt(a=>({...a,type:e.target.value}))}>
+                    <option value="">Select...</option>
+                    {['Endo','Operative','Surgery','Proth','Scaling','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
+                  <label style={{fontSize:11,color:'var(--muted)'}}>Notes</label>
+                  <input value={newAppt.notes} onChange={e=>setNewAppt(a=>({...a,notes:e.target.value}))} placeholder="Optional..."/>
+                </div>
+                {!apptConflict && (
+                  <button onClick={()=>handleAddAppt(false)} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+                )}
               </div>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
-                <label style={{fontSize:11,color:'var(--muted)'}}>Type</label>
-                <select value={newAppt.type} onChange={e=>setNewAppt(a=>({...a,type:e.target.value}))}>
-                  <option value="">Select...</option>
-                  {['Endo','Operative','Surgery','Proth','Scaling','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
-                </select>
-              </div>
-              <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
-                <label style={{fontSize:11,color:'var(--muted)'}}>Notes</label>
-                <input value={newAppt.notes} onChange={e=>setNewAppt(a=>({...a,notes:e.target.value}))} placeholder="Optional..."/>
-              </div>
-              <div style={{width:'100%'}}>{apptConflict && (<div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:8,padding:'10px 14px',marginBottom:10}}><div style={{fontWeight:700,color:'var(--danger)',fontSize:13,marginBottom:6}}>⚠️ Time Conflict!</div><div style={{color:'var(--muted)',fontSize:12,marginBottom:8}}>{apptConflict.patient} has appointment at {apptConflict.time} — only {apptConflict.diff} min apart</div><div style={{display:'flex',gap:8}}><button onClick={()=>handleAddAppt(true)} style={{padding:'6px 14px',background:'var(--danger)',color:'white',border:'none',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer'}}>Book Anyway</button><button onClick={()=>{setNewAppt(a=>({...a,datetime:''}));setApptConflict(null);}} style={{padding:'6px 14px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:6,fontSize:12,cursor:'pointer'}}>Choose Another Time</button></div></div>)}{!apptConflict && <button onClick={()=>handleAddAppt(false)} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>}</div>
+
+              {/* Conflict Warning */}
+              {apptConflict && (
+                <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:8,padding:'12px 16px',marginTop:8}}>
+                  <div style={{fontWeight:700,color:'var(--danger)',fontSize:14,marginBottom:6}}>⚠️ Time Conflict!</div>
+                  <div style={{color:'var(--muted)',fontSize:13,marginBottom:10}}>
+                    <strong style={{color:'var(--text)'}}>{apptConflict.patient}</strong> has an appointment at <strong style={{color:'var(--text)'}}>{apptConflict.time}</strong> — only <strong style={{color:'var(--warning)'}}>{apptConflict.diff} minutes</strong> apart (minimum 1 hour required)
+                  </div>
+                  <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                    <button onClick={()=>handleAddAppt(true)} style={{padding:'7px 16px',background:'var(--danger)',color:'white',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Book Anyway</button>
+                    <button onClick={()=>{setNewAppt(a=>({...a,datetime:''}));setApptConflict(null);}} style={{padding:'7px 16px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,cursor:'pointer'}}>Choose Another Time</button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -493,7 +520,7 @@ export default function PatientDetail() {
           <div style={{display:'flex',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',flexWrap:'wrap',alignItems:'flex-end'}}>
             <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minWidth:200}}>
               <label style={{fontSize:12,color:'var(--muted)'}}>Google Drive Photo Link</label>
-              <input value={newPhotoUrl} onChange={e=>setNewPhotoUrl(e.target.value)} placeholder="Paste Google Drive link here..." style={{padding:'9px 12px'}}/>
+              <input value={newPhotoUrl} onChange={e=>setNewPhotoUrl(e.target.value)} placeholder="Paste Google Drive link here..."/>
               <span style={{fontSize:11,color:'var(--muted)'}}>Google Drive → Right click photo → Share → Copy link</span>
             </div>
             <button onClick={handleAddPhoto} style={{padding:'9px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:14,fontWeight:600,cursor:'pointer'}}>Save</button>
