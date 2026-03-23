@@ -9,6 +9,7 @@ import Patients from './pages/Patients';
 import PatientForm from './pages/PatientForm';
 import PatientDetail from './pages/PatientDetail';
 import Appointments from './pages/Appointments';
+import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import Locked from './pages/Locked';
 import './styles/global.css';
@@ -25,29 +26,20 @@ function ComingSoon({ title }) {
       <div style={{fontSize:64}}>🚀</div>
       <h1 style={{fontSize:28,fontWeight:800}}>{title}</h1>
       <p style={{color:'var(--muted)',fontSize:16}}>Coming Soon...</p>
-      <p style={{color:'var(--muted)',fontSize:14}}>This feature is under development</p>
     </div>
   );
 }
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
-  if (user === undefined) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'white' }}>
-      Loading...
-    </div>
-  );
+  if (user === undefined) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'white'}}>Loading...</div>;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function LoginRoute() {
   const { user } = useAuth();
-  if (user === undefined) return (
-    <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', color:'white' }}>
-      Loading...
-    </div>
-  );
+  if (user === undefined) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'white'}}>Loading...</div>;
   if (user) return <Navigate to="/" replace />;
   return <Login />;
 }
@@ -67,6 +59,7 @@ function App() {
             <Route path="patients/:id" element={<PatientDetail />} />
             <Route path="patients/:id/edit" element={<PatientForm />} />
             <Route path="appointments" element={<Appointments />} />
+            <Route path="gallery" element={<Gallery />} />
             <Route path="finance" element={<ComingSoon title="💰 Finance" />} />
             <Route path="tools" element={<ComingSoon title="🔧 Tools" />} />
           </Route>
