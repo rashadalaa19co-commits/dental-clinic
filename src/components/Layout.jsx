@@ -6,13 +6,13 @@ const NAV = [
   { to: '/',             icon: '📊', label: 'Dashboard' },
   { to: '/patients',     icon: '👥', label: 'Patients' },
   { to: '/appointments', icon: '📅', label: 'Appointments' },
+  { to: '/gallery',      icon: '📸', label: 'Gallery' },
   { to: '/finance',      icon: '💰', label: 'Finance' },
   { to: '/tools',        icon: '🔧', label: 'Tools' },
 ];
 
 export default function Layout() {
   const { user, logout } = useAuth();
-
   return (
     <div className={styles.shell}>
       <aside className={styles.sidebar}>
@@ -23,21 +23,15 @@ export default function Layout() {
             <div className={styles.logoPro}>Pro</div>
           </div>
         </div>
-
         <nav className={styles.nav}>
           {NAV.map(({ to, icon, label }) => (
-            <NavLink
-              key={to} to={to} end={to === '/'}
-              className={({ isActive }) =>
-                `${styles.navItem} ${isActive ? styles.active : ''}`
-              }
-            >
+            <NavLink key={to} to={to} end={to === '/'}
+              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}>
               <span className={styles.navIcon}>{icon}</span>
               <span>{label}</span>
             </NavLink>
           ))}
         </nav>
-
         <div className={styles.userBox}>
           <img src={user?.photoURL} alt="" className={styles.avatar}/>
           <div className={styles.userInfo}>
@@ -47,7 +41,6 @@ export default function Layout() {
           <button className={styles.logoutBtn} onClick={logout} title="Sign out">⏻</button>
         </div>
       </aside>
-
       <main className={styles.main}>
         <Outlet/>
       </main>
