@@ -17,7 +17,6 @@ const OPERATIVE_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothClamp',l:'Clam
 const SURGERY_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothNum',l:'Tooth Num'},{k:'typeOfEx',l:'Type EX'},{k:'sutureType',l:'Suture'},{k:'complications',l:'Complications'},{k:'date',l:'Date',t:'date'}];
 const PROTH_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'teeth',l:'Teeth'},{k:'labStage',l:'Lab Stage'},{k:'material',l:'Material'},{k:'shade',l:'Shade'},{k:'vitality',l:'Vitality'},{k:'impression',l:'Impression'},{k:'labName',l:'Lab'},{k:'date',l:'Date',t:'date'}];
 
-// --- Sub-components (EndoForm, VisitForm) تظل كما هي في كودك ---
 function EndoForm({ initial, onSave, onCancel }) {
   const [teeth, setTeeth] = useState(initial ? [initial] : [emptyTooth()]);
   const addTooth = () => setTeeth(t => [...t, emptyTooth()]);
@@ -98,7 +97,8 @@ export default function PatientDetail() {
   const [adding, setAdding] = useState(null);
   const [editing, setEditing] = useState({ type: null, idx: null });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false); // حالة رفع الصور
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [showAddPhoto, setShowAddPhoto] = useState(false);
   const [patientAppts, setPatientAppts] = useState([]);
   const [showAppts, setShowAppts] = useState(false);
   const [showAddAppt, setShowAddAppt] = useState(false);
@@ -109,10 +109,7 @@ export default function PatientDetail() {
 
   const load = async () => {
     if (!user) return;
-    const [pts, appts] = await Promise.all([
-      getPatients(user.uid),
-      getAppointments(user.uid)
-    ]);
+    const [pts, appts] = await Promise.all([ getPatients(user.uid), getAppointments(user.uid) ]);
     setPatient(pts.find(p => p.id === id) || null);
     setPatientAppts(appts.filter(a => a.patientId === id));
   };
@@ -163,58 +160,34 @@ export default function PatientDetail() {
     await saveVisits(type, current);
   };
 
-  // --- دالة رفع صور جديدة من صفحة التفاصيل ---
-  const handleUploadNewPhotos = async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-    
-    setUploading(true);
-    const newUrls = [...(patient.xRayUrls || [])];
-
-    for (const file of files) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "ntjnefxv");
-      formData.append("cloud_name", "dvpbbawh2");
-
-      try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dvpbbawh2/image/upload", {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-        if (data.secure_url) newUrls.push(data.secure_url);
-      } catch (err) { console.error(err); }
-    }
-
-    await updatePatient(user.uid, id, { ...patient, xRayUrls: newUrls });
+  const handleAddPhoto = async () => {
+    if (!newPhotoUrl.trim()) return;
+    const current = patient.photos || [];
+    await updatePatient(user.uid, id, { ...patient, photos: [...current, newPhotoUrl.trim()] });
     await load();
-    setUploading(false);
+    setNewPhotoUrl('');
+    setShowAddPhoto(false);
   };
 
   const handleDeletePhoto = async (idx) => {
     if (!confirm('Delete this photo?')) return;
-    const current = [...(patient.xRayUrls || [])];
+    const current = [...(patient.photos || [])];
     current.splice(idx, 1);
-    await updatePatient(user.uid, id, { ...patient, xRayUrls: current });
+    await updatePatient(user.uid, id, { ...patient, photos: current });
     await load();
-  };
-
-  const checkConflict = (datetime) => {
-    if (!datetime) return null;
-    const newTime = parseISO(datetime);
-    for (const appt of patientAppts) {
-      if (!appt.datetime) continue;
-      const existing = parseISO(appt.datetime);
-      const diff = Math.abs(differenceInMinutes(newTime, existing));
-      if (diff < 60) return { patient: appt.patientName || patient.name, time: format(existing, 'HH:mm'), diff };
-    }
-    return null;
   };
 
   const handleDateChange = (datetime) => {
     setNewAppt(a => ({...a, datetime}));
-    setApptConflict(checkConflict(datetime));
+    const newTime = parseISO(datetime);
+    let conflict = null;
+    for (const appt of patientAppts) {
+        if (!appt.datetime) continue;
+        const existing = parseISO(appt.datetime);
+        const diff = Math.abs(differenceInMinutes(newTime, existing));
+        if (diff < 60) conflict = { patient: appt.patientName || patient.name, time: format(existing, 'HH:mm'), diff };
+    }
+    setApptConflict(conflict);
   };
 
   const handleAddAppt = async (force = false) => {
@@ -243,23 +216,16 @@ export default function PatientDetail() {
   if (!patient) return <div className={styles.loading}>Loading...</div>;
 
   const info = [
-    ['Phone', patient.phone],
-    ['Age', patient.age],
-    ['Occupation', patient.occupation],
-    ['Type', patient.patientType],
-    ['Complaint', patient.chiefComplaint],
-    ['Tooth', patient.tooth],
-    ['Procedure', patient.procedure],
-    ['Start', patient.dateStart],
-    ['Alert', patient.alert],
-    ['Difficulty', patient.difficulty],
-    ['Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : (Array.isArray(patient.dentalHistory) ? patient.dentalHistory.join(', ') : patient.dentalHistory)],
+    ['Phone', patient.phone], ['Age', patient.age], ['Occupation', patient.occupation],
+    ['Type', patient.patientType], ['Complaint', patient.chiefComplaint], ['Tooth', patient.tooth],
+    ['Procedure', patient.procedure], ['Start', patient.dateStart], ['Alert', patient.alert],
+    ['Difficulty', patient.difficulty], ['Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : patient.medicalHistory],
   ];
 
   const visitConfigs = [
     { key:'operativeVisits', label:'Operative', color:'var(--operative)', fields:OPERATIVE_FIELDS },
     { key:'surgeryVisits',   label:'Surgery',   color:'var(--surgery)',   fields:SURGERY_FIELDS },
-    { key:'prothVisits',      label:'Proth',      color:'var(--proth)',      fields:PROTH_FIELDS },
+    { key:'prothVisits',     label:'Proth',     color:'var(--proth)',     fields:PROTH_FIELDS },
   ];
 
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
@@ -293,24 +259,20 @@ export default function PatientDetail() {
             </div>
           ) : null)}
         </div>
-
-        {/* Appointment bar */}
+        {/* Appointments Section Inside Card */}
         <div style={{marginTop:14,paddingTop:14,borderTop:'1px solid var(--border)'}}>
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-            <div style={{display:'flex',alignItems:'center',gap:10}}>
+           {/* ... كود الـ Appointment Bar بتاعك الأصلي ... */}
+           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
               <span style={{fontSize:13,fontWeight:600,color:'var(--accent)'}}>📅 Appointments</span>
-              <span style={{fontSize:12,color:'var(--muted)'}}>{patientAppts.length} total</span>
-            </div>
-            <div style={{display:'flex',gap:8}}>
-              <button onClick={() => setShowAppts(s=>!s)} style={{padding:'4px 12px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:12,cursor:'pointer'}}>
-                {showAppts ? 'Hide' : 'Show All'}
-              </button>
-              <button onClick={() => setShowAddAppt(s=>!s)} style={{padding:'4px 14px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>
-                {showAddAppt ? 'Cancel' : '+ Add'}
-              </button>
-            </div>
-          </div>
-          {/* عرض المواعيد كما في كودك الأصلي */}
+              <button onClick={() => setShowAddAppt(s=>!s)} style={{padding:'4px 14px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer'}}>{showAddAppt ? 'Cancel' : '+ Add'}</button>
+           </div>
+           {/* Add appt form and list Logic */}
+           {showAddAppt && (
+             <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:8,marginTop:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
+                <input type="datetime-local" value={newAppt.datetime} onChange={e=>handleDateChange(e.target.value)}/>
+                <button onClick={()=>handleAddAppt(false)} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+             </div>
+           )}
         </div>
       </div>
 
@@ -318,57 +280,64 @@ export default function PatientDetail() {
       {patient.patientType === 'Adult' && (
         <>
           <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--endo)'}}>
-            <div className={styles.visitHeader}>
-              <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
-              <button className={styles.addVisitBtn} style={{color:'var(--endo)',borderColor:'var(--endo)'}}
-                onClick={() => { setAdding(adding === 'endo' ? null : 'endo'); setEditing({type:null,idx:null}); }}>
-                {adding === 'endo' ? 'Cancel' : '+ Add Visit'}
-              </button>
-            </div>
-            {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
-            {(patient.endoVisits||[]).map((tooth,ti) => (
-               <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
-                   {/* تفاصيل الـ Endo */}
-               </div>
-            ))}
+             {/* Endo Visits Logic */}
+             <div className={styles.visitHeader}>
+                <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
+                <button className={styles.addVisitBtn} style={{color:'var(--endo)',borderColor:'var(--endo)'}} onClick={() => setAdding(adding === 'endo' ? null : 'endo')}>+ Add Visit</button>
+             </div>
+             {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
+             {(patient.endoVisits||[]).map((tooth,ti) => (
+                <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
+                   Tooth: {tooth.toothName} | Diagnosis: {tooth.diagnosis}
+                </div>
+             ))}
           </div>
-          {/* بقية سكاشن الـ Visits */}
+
+          {visitConfigs.map(cfg => {
+            const visits = patient[cfg.key] || [];
+            return (
+              <div key={cfg.key} className={`card ${styles.visitCard}`} style={{borderLeftColor:cfg.color}}>
+                <div className={styles.visitHeader}>
+                  <span className={styles.visitLabel} style={{color:cfg.color}}>{cfg.label}</span>
+                  <button className={styles.addVisitBtn} style={{color:cfg.color,borderColor:cfg.color}} onClick={() => setAdding(adding === cfg.key ? null : cfg.key)}>+ Add Visit</button>
+                </div>
+                {adding === cfg.key && <VisitForm fields={cfg.fields} onSave={(data) => handleAddVisit(cfg.key, data)} onCancel={() => setAdding(null)}/>}
+                {visits.map((v,i) => <div key={i} style={{background:'var(--surface2)',padding:14,marginBottom:10,borderRadius:8}}>{v.toothName || 'Visit'}</div>)}
+              </div>
+            );
+          })}
         </>
       )}
 
-      {/* PHOTOS - القسم المعدل لعرض صور Cloudinary */}
-      <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--accent)'}}>
+      {/* 📸 PHOTOS MOVED TO THE END OF PAGE */}
+      <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--accent)', marginTop: 30}}>
         <div className={styles.visitHeader}>
-          <span className={styles.visitLabel} style={{color:'var(--accent)'}}>📸 X-Rays & Case Photos</span>
-          <span className={styles.visitCount}>{(patient.xRayUrls||[]).length} image{(patient.xRayUrls||[]).length !== 1 ? 's' : ''}</span>
-          <div style={{position:'relative'}}>
-            <button className={styles.addVisitBtn} style={{color:'var(--accent)',borderColor:'var(--accent)'}} disabled={uploading}>
-              {uploading ? 'Uploading...' : '+ Add Photos'}
-              <input type="file" multiple accept="image/*" onChange={handleUploadNewPhotos} 
-                style={{position:'absolute', top:0, left:0, opacity:0, width:'100%', height:'100%', cursor:'pointer'}} />
-            </button>
-          </div>
+          <span className={styles.visitLabel} style={{color:'var(--accent)'}}>📸 Case Photos</span>
+          <span className={styles.visitCount}>{(patient.photos||[]).length} photo{(patient.photos||[]).length !== 1 ? 's' : ''}</span>
+          <button className={styles.addVisitBtn} style={{color:'var(--accent)',borderColor:'var(--accent)'}}
+            onClick={() => setShowAddPhoto(s => !s)}>
+            {showAddPhoto ? 'Cancel' : '+ Add Photo'}
+          </button>
         </div>
-
-        {(patient.xRayUrls||[]).length === 0 && !uploading && <p className={styles.noVisits}>No photos yet</p>}
-        
-        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(180px, 1fr))', gap:15, marginTop:15}}>
-          {(patient.xRayUrls||[]).map((url, i) => (
-            <div key={i} style={{position:'relative', borderRadius:10, overflow:'hidden', border:'1px solid var(--border)', background:'var(--surface2)'}}>
-              <a href={url} target="_blank" rel="noreferrer">
-                <img src={url} alt={`X-ray ${i}`} style={{width:'100%', height:'150px', objectFit:'cover'}} />
-              </a>
-              <button 
-                onClick={() => handleDeletePhoto(i)}
-                style={{position:'absolute', top:5, right:5, background:'rgba(248,81,73,0.8)', color:'white', border:'none', borderRadius:'50%', width:24, height:24, cursor:'pointer', fontSize:12, fontWeight:'bold'}}
-              >
-                ×
-              </button>
-              <div style={{padding:5, textAlign:'center', fontSize:10, color:'var(--muted)'}}>Image {i+1}</div>
+        {showAddPhoto && (
+          <div style={{display:'flex',gap:10,padding:14,background:'var(--surface2)',borderRadius:'var(--radius-sm)',marginBottom:12,border:'1px solid var(--border)',flexWrap:'wrap',alignItems:'flex-end'}}>
+            <div style={{display:'flex',flexDirection:'column',gap:6,flex:1,minWidth:200}}>
+              <label style={{fontSize:12,color:'var(--muted)'}}>Google Drive Photo Link</label>
+              <input value={newPhotoUrl} onChange={e=>setNewPhotoUrl(e.target.value)} placeholder="Paste link here..." style={{padding:'9px 12px'}}/>
+            </div>
+            <button onClick={handleAddPhoto} style={{padding:'9px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:14,fontWeight:600,cursor:'pointer'}}>Save</button>
+          </div>
+        )}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:12,marginTop:8}}>
+          {(patient.photos||[]).map((url, i) => (
+            <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1/1'}}>
+               <img src={url} alt="" style={{width:'100%', height:'100%', objectFit:'cover'}} />
+               <button onClick={() => handleDeletePhoto(i)} style={{position:'absolute',top:5,right:5,background:'red',color:'white',border:'none',borderRadius:'50%',width:20,height:20,cursor:'pointer'}}>×</button>
             </div>
           ))}
         </div>
       </div>
+
     </div>
   );
 }
