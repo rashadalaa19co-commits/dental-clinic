@@ -31,7 +31,6 @@ const emptyRow = fields => Object.fromEntries(fields.map(f => [f.key, '']));
 const emptyCanal = () => ({ canal:'', wl:'', maf:'', note:'' });
 const emptyTooth = () => ({ toothName:'', diagnosis:'', clamp:'', referencePoint:'', date:'', canals:[emptyCanal()] });
 
-// --- Sub-Components ---
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -151,7 +150,6 @@ function VisitSection({ title, color, rows, onAdd, onUpdate, onRemove, fields })
   );
 }
 
-// --- Main Form Component ---
 export default function PatientForm() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -163,10 +161,8 @@ export default function PatientForm() {
     patientType:'', medicalHistory:[],
     chiefComplaint:'', tooth:'', procedure:'',
     status:'Not started', difficulty:'', alert:'None',
-    dateStart:'', notes:'', xRayUrls: []
+    dateStart:'', notes:''
   });
-
-  const [selectedFiles, setSelectedFiles] = useState([]); // لرفع صور متعددة
   const [endoRows, setEndoRows] = useState([]);
   const [operativeRows, setOperativeRows] = useState([]);
   const [surgeryRows, setSurgeryRows] = useState([]);
@@ -181,7 +177,7 @@ export default function PatientForm() {
       getPatients(user.uid).then(patients => {
         const p = patients.find(x => x.id === id);
         if (p) {
-          setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [], xRayUrls: p.xRayUrls || [] });
+          setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
           setEndoRows((p.endoVisits || []).map(t => ({...t, canals: t.canals || [{canal:"",wl:"",maf:"",note:""}]})));
           setOperativeRows(p.operativeVisits || []);
           setSurgeryRows(p.surgeryVisits || []);
@@ -196,31 +192,23 @@ export default function PatientForm() {
         if (next) setNextAppt(next.datetime);
       });
     }
-  }, [id, user.uid, isEdit]);
+  }, [id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  // دالة الرفع لـ Cloudinary (Multiple)
-  const uploadToCloudinary = async () => {
-    if (selectedFiles.length === 0) return form.xRayUrls || [];
-    
-    const uploadedUrls = [...(form.xRayUrls || [])];
-    for (const file of selectedFiles) {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", "ntjnefxv");
-      formData.append("cloud_name", "dvpbbawh2");
-
-      try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dvpbbawh2/image/upload", {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-        if (data.secure_url) uploadedUrls.push(data.secure_url);
-      } catch (err) { console.error("Upload error", err); }
-    }
-    return uploadedUrls;
+  const handleAddAppt = async () => {
+    if (!nextAppt) return;
+    await addAppointment(user.uid, {
+      patientId: id,
+      patientName: form.name,
+      datetime: nextAppt,
+      type: form.procedure || '',
+      status: 'Scheduled'
+    });
+    const appts = await getAppointments(user.uid);
+    const pa = appts.filter(a => a.patientId === id);
+    setPatientAppts(pa);
+    alert('Appointment saved!');
   };
 
   const handleSave = async () => {
@@ -228,16 +216,7 @@ export default function PatientForm() {
     if (!form.patientType) return alert('Please select patient type');
     setSaving(true);
     try {
-      const finalUrls = await uploadToCloudinary();
-      const data = { 
-        ...form, 
-        xRayUrls: finalUrls, 
-        endoVisits: endoRows, 
-        operativeVisits: operativeRows, 
-        surgeryVisits: surgeryRows, 
-        prothVisits: prothRows 
-      };
-
+      const data = { ...form, endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
       if (isEdit) {
         await updatePatient(user.uid, id, data);
         nav('/patients/' + id);
@@ -246,41 +225,40 @@ export default function PatientForm() {
         nav('/patients/' + ref.id);
       }
     } catch (err) {
-      alert('Error saving!');
-      console.error(err);
+      if (err.message === 'LIMIT_REACHED') {
+        nav('/locked');
+      } else {
+        alert('Error saving patient!');
+        console.error(err);
+      }
     } finally { setSaving(false); }
   };
+
+  const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
 
   return (
     <div>
       <div className={styles.topbar}>
-        <div><h1 className={styles.title}>{isEdit ? 'Edit Patient' : 'New Patient'}</h1></div>
+        <div>
+          <h1 className={styles.title}>{isEdit ? 'Edit Patient' : 'New Patient'}</h1>
+        </div>
         <div className={styles.topActions}>
           <button className={styles.cancelBtn} onClick={() => nav(-1)}>Cancel</button>
-          <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Patient'}</button>
+          <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save Patient'}
+          </button>
         </div>
       </div>
 
       <div className={'card ' + styles.section}>
         <h3 className={styles.sectionTitle}>Patient Info</h3>
         <div className={styles.grid4}>
-          <div className={styles.field}><label>Full Name</label><input value={form.name} onChange={e=>set('name',e.target.value)}/></div>
-          <div className={styles.field}><label>Phone</label><input value={form.phone} onChange={e=>set('phone',e.target.value)}/></div>
-          <div className={styles.field}><label>Age</label><input value={form.age} onChange={e=>set('age',e.target.value)}/></div>
-          <div className={styles.field}><label>Occupation</label><input value={form.occupation} onChange={e=>set('occupation',e.target.value)}/></div>
-          
-          {/* حقل رفع الصور المتعددة */}
-          <div className={styles.field} style={{gridColumn:'1/-1', background:'rgba(0,212,255,0.05)', padding:12, borderRadius:8, border:'1px dashed var(--accent)'}}>
-            <label>📸 Upload X-Rays / Photos (Select multiple)</label>
-            <input type="file" multiple accept="image/*" onChange={(e)=>setSelectedFiles(Array.from(e.target.files))}/>
-            <div style={{display:'flex', gap:8, marginTop:8, flexWrap:'wrap'}}>
-              {selectedFiles.map((f,i) => <span key={i} style={{fontSize:10, background:'var(--surface2)', padding:'2px 6px', borderRadius:4}}>{f.name}</span>)}
-              {isEdit && form.xRayUrls?.length > 0 && <span style={{fontSize:10, color:'var(--success)'}}>({form.xRayUrls.length} existing images)</span>}
-            </div>
-          </div>
-
-          <div className={styles.field}><label>Chief Complaint</label><input value={form.chiefComplaint} onChange={e=>set('chiefComplaint',e.target.value)}/></div>
-          <div className={styles.field}><label>Tooth</label><input value={form.tooth} onChange={e=>set('tooth',e.target.value)}/></div>
+          <div className={styles.field}><label>Full Name</label><input value={form.name} onChange={e=>set('name',e.target.value)} placeholder="Full name"/></div>
+          <div className={styles.field}><label>Phone</label><input value={form.phone} onChange={e=>set('phone',e.target.value)} placeholder="Phone number"/></div>
+          <div className={styles.field}><label>Age</label><input value={form.age} onChange={e=>set('age',e.target.value)} placeholder="Age"/></div>
+          <div className={styles.field}><label>Occupation</label><input value={form.occupation} onChange={e=>set('occupation',e.target.value)} placeholder="Occupation"/></div>
+          <div className={styles.field}><label>Chief Complaint</label><input value={form.chiefComplaint} onChange={e=>set('chiefComplaint',e.target.value)} placeholder="Chief complaint"/></div>
+          <div className={styles.field}><label>Tooth</label><input value={form.tooth} onChange={e=>set('tooth',e.target.value)} placeholder="Tooth number"/></div>
           <div className={styles.field}>
             <label>Procedure</label>
             <select value={form.procedure} onChange={e=>set('procedure',e.target.value)}>
@@ -294,10 +272,66 @@ export default function PatientForm() {
               {['Not started','In progress','Done','Follow Up','Lap waiting'].map(o=><option key={o}>{o}</option>)}
             </select>
           </div>
+          <div className={styles.field}>
+            <label>Difficulty</label>
+            <select value={form.difficulty} onChange={e=>set('difficulty',e.target.value)}>
+              <option value="">Select...</option>
+              {['Easy','Medium','Hard'].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div className={styles.field}>
+            <label>Alert</label>
+            <select value={form.alert} onChange={e=>set('alert',e.target.value)}>
+              {['None','Alert','Urgent'].map(o=><option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div className={styles.field}><label>Start Date</label><input type="date" value={form.dateStart} onChange={e=>set('dateStart',e.target.value)}/></div>
+
+          {/* Appointment bar - like start date */}
+          <div className={styles.field}>
+            <label style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <span>📅 Next Appointment</span>
+              {isEdit && patientAppts.length > 0 && (
+                <span onClick={() => setShowAppts(s=>!s)} style={{fontSize:11,color:'var(--accent)',cursor:'pointer'}}>
+                  {upcomingAppts.length} upcoming {showAppts ? '▲' : '▼'}
+                </span>
+              )}
+            </label>
+            <div style={{display:'flex',gap:6}}>
+              <input type="datetime-local" value={nextAppt} onChange={e=>setNextAppt(e.target.value)} style={{flex:1}}/>
+              {isEdit && nextAppt && (
+                <button type="button" onClick={handleAddAppt}
+                  style={{padding:'0 12px',background:'var(--accent)',color:'#000',border:'none',borderRadius:'var(--radius-sm)',fontSize:13,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+                  + Book
+                </button>
+              )}
+            </div>
+            {/* Show previous appointments */}
+            {showAppts && patientAppts.length > 0 && (
+              <div style={{marginTop:8,background:'var(--surface2)',borderRadius:8,border:'1px solid var(--border)',overflow:'hidden'}}>
+                {patientAppts.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
+                  const isPast = !a.datetime || !isAfter(parseISO(a.datetime), new Date());
+                  return (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',borderBottom: i < patientAppts.length-1 ? '1px solid var(--border)' : 'none',opacity: isPast ? 0.6 : 1}}>
+                      <div style={{width:6,height:6,borderRadius:'50%',background: isPast ? 'var(--muted)' : 'var(--success)',flexShrink:0}}></div>
+                      <div style={{flex:1,fontSize:13}}>{a.datetime ? format(parseISO(a.datetime),'d MMM yyyy · HH:mm') : '--'}</div>
+                      <span style={{fontSize:11,color:'var(--muted)'}}>{a.type||'-'}</span>
+                      <span style={{fontSize:11,color: isPast ? 'var(--muted)' : 'var(--success)'}}>{a.status||'-'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div className={styles.field} style={{gridColumn:'1/-1'}}>
             <label>Medical History</label>
-            <MultiSelectDropdown options={MEDICAL_HISTORY_OPTIONS} selected={form.medicalHistory||[]} onChange={val=>set('medicalHistory',val)} placeholder="Select history..."/>
+            <MultiSelectDropdown options={MEDICAL_HISTORY_OPTIONS} selected={form.medicalHistory||[]} onChange={val=>set('medicalHistory',val)} placeholder="Select medical history..."/>
           </div>
+        </div>
+        <div className={styles.field} style={{marginTop:12}}>
+          <label>Notes</label>
+          <textarea value={form.notes} onChange={e=>set('notes',e.target.value)} placeholder="Additional notes..."/>
         </div>
       </div>
 
@@ -307,7 +341,7 @@ export default function PatientForm() {
           {['Adult','Bedo'].map(t => (
             <label key={t} className={styles.typeOption + ' ' + (form.patientType===t?styles.typeActive:'')}>
               <input type="radio" name="type" value={t} checked={form.patientType===t} onChange={()=>set('patientType',t)}/>
-              {t}
+              {t==='Adult'?'Adult':'Bedo (Soon)'}
             </label>
           ))}
         </div>
@@ -317,17 +351,20 @@ export default function PatientForm() {
         <div className={'card ' + styles.section}>
           <h3 className={styles.sectionTitle}>Visit Sessions</h3>
           <EndoSection rows={endoRows} setRows={setEndoRows}/>
-          <VisitSection title="Operative Visits" color="var(--operative)" rows={operativeRows} fields={OPERATIVE_FIELDS}
+          <VisitSection
+            title="Operative Visits" color="var(--operative)" rows={operativeRows} fields={OPERATIVE_FIELDS}
             onAdd={()=>setOperativeRows(r=>[...r,emptyRow(OPERATIVE_FIELDS)])}
             onUpdate={(idx,key,val)=>setOperativeRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
             onRemove={(idx)=>setOperativeRows(r=>r.filter((_,i)=>i!==idx))}
           />
-          <VisitSection title="Surgery Visits" color="var(--surgery)" rows={surgeryRows} fields={SURGERY_FIELDS}
+          <VisitSection
+            title="Surgery Visits" color="var(--surgery)" rows={surgeryRows} fields={SURGERY_FIELDS}
             onAdd={()=>setSurgeryRows(r=>[...r,emptyRow(SURGERY_FIELDS)])}
             onUpdate={(idx,key,val)=>setSurgeryRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
             onRemove={(idx)=>setSurgeryRows(r=>r.filter((_,i)=>i!==idx))}
           />
-          <VisitSection title="Proth Visits" color="var(--proth)" rows={prothRows} fields={PROTH_FIELDS}
+          <VisitSection
+            title="Proth Visits" color="var(--proth)" rows={prothRows} fields={PROTH_FIELDS}
             onAdd={()=>setProthRows(r=>[...r,emptyRow(PROTH_FIELDS)])}
             onUpdate={(idx,key,val)=>setProthRows(r=>r.map((x,i)=>i===idx?{...x,[key]:val}:x))}
             onRemove={(idx)=>setProthRows(r=>r.filter((_,i)=>i!==idx))}
@@ -337,7 +374,9 @@ export default function PatientForm() {
 
       <div className={styles.bottomActions}>
         <button className={styles.cancelBtn} onClick={() => nav(-1)}>Cancel</button>
-        <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Patient'}</button>
+        <button className={styles.saveBtn} onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : 'Save Patient'}
+        </button>
       </div>
     </div>
   );
