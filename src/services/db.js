@@ -4,7 +4,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
-const FREE_LIMIT = 10;
+const FREE_LIMIT = 7;
 const col = (uid, name) => collection(db, 'clinics', uid, name);
 
 export async function checkAccess(uid, userInfo) {
