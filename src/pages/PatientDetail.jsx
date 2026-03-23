@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, deletePatient, updatePatient, getAppointments, addAppointment, updateAppointment } from '../services/db';
-import { format, parseISO, isAfter } from 'date-fns';
+import { format, parseISO, isAfter, differenceInMinutes } from 'date-fns';
 import styles from './PatientDetail.module.css';
 
 const STATUS_BADGE = {
@@ -105,6 +105,7 @@ export default function PatientDetail() {
   const [newAppt, setNewAppt] = useState({ datetime:'', type:'', notes:'' });
   const [editingApptId, setEditingApptId] = useState(null);
   const [editApptData, setEditApptData] = useState({});
+  const [apptConflict, setApptConflict] = useState(null);
 
   const load = async () => {
     if (!user) return;
@@ -179,8 +180,26 @@ export default function PatientDetail() {
     await load();
   };
 
-  const handleAddAppt = async () => {
+  const checkConflict = (datetime) => {
+    if (!datetime) return null;
+    const newTime = parseISO(datetime);
+    for (const appt of patientAppts) {
+      if (!appt.datetime) continue;
+      const existing = parseISO(appt.datetime);
+      const diff = Math.abs(differenceInMinutes(newTime, existing));
+      if (diff < 60) return { patient: appt.patientName || patient.name, time: format(existing, 'HH:mm'), diff };
+    }
+    return null;
+  };
+
+  const handleDateChange = (datetime) => {
+    setNewAppt(a => ({...a, datetime}));
+    setApptConflict(checkConflict(datetime));
+  };
+
+  const handleAddAppt = async (force = false) => {
     if (!newAppt.datetime) return alert('Please select date and time');
+    if (!force && apptConflict) return;
     await addAppointment(user.uid, {
       patientId: id,
       patientName: patient.name,
@@ -291,7 +310,7 @@ export default function PatientDetail() {
             <div style={{display:'flex',flexWrap:'wrap',gap:10,padding:12,background:'var(--surface2)',borderRadius:8,marginTop:8,border:'1px solid var(--border)',alignItems:'flex-end'}}>
               <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:160}}>
                 <label style={{fontSize:11,color:'var(--muted)'}}>Date & Time</label>
-                <input type="datetime-local" value={newAppt.datetime} onChange={e=>setNewAppt(a=>({...a,datetime:e.target.value}))}/>
+                <input type="datetime-local" value={newAppt.datetime} onChange={e=>handleDateChange(e.target.value)}/>
               </div>
               <div style={{display:'flex',flexDirection:'column',gap:4,flex:1,minWidth:120}}>
                 <label style={{fontSize:11,color:'var(--muted)'}}>Type</label>
@@ -304,7 +323,7 @@ export default function PatientDetail() {
                 <label style={{fontSize:11,color:'var(--muted)'}}>Notes</label>
                 <input value={newAppt.notes} onChange={e=>setNewAppt(a=>({...a,notes:e.target.value}))} placeholder="Optional..."/>
               </div>
-              <button onClick={handleAddAppt} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>
+              <div style={{width:'100%'}}>{apptConflict && (<div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:8,padding:'10px 14px',marginBottom:10}}><div style={{fontWeight:700,color:'var(--danger)',fontSize:13,marginBottom:6}}>⚠️ Time Conflict!</div><div style={{color:'var(--muted)',fontSize:12,marginBottom:8}}>{apptConflict.patient} has appointment at {apptConflict.time} — only {apptConflict.diff} min apart</div><div style={{display:'flex',gap:8}}><button onClick={()=>handleAddAppt(true)} style={{padding:'6px 14px',background:'var(--danger)',color:'white',border:'none',borderRadius:6,fontSize:12,fontWeight:600,cursor:'pointer'}}>Book Anyway</button><button onClick={()=>{setNewAppt(a=>({...a,datetime:''}));setApptConflict(null);}} style={{padding:'6px 14px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:6,fontSize:12,cursor:'pointer'}}>Choose Another Time</button></div></div>)}{!apptConflict && <button onClick={()=>handleAddAppt(false)} style={{padding:'9px 20px',background:'var(--success)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>Save</button>}</div>
             </div>
           )}
 
