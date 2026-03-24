@@ -132,7 +132,7 @@ export default function Gallery() {
       <div style={{display:'grid',gridTemplateColumns:'300px 1fr',gap:20}}>
         {/* Left: Patient list */}
         <div>
-          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:var(--radius),padding:16}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:16}}>
             <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 12px',marginBottom:12}}>
               <span style={{color:'var(--muted)'}}>🔍</span>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search patients..." style={{border:'none',background:'transparent',color:'var(--text)',outline:'none',fontSize:14,width:'100%'}}/>
