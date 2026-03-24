@@ -76,7 +76,22 @@ export default function Dashboard() {
       </div>
 
       <div className={styles.grid2}>
-       
+        {/* Today's appointments */}
+        <div className="card">
+          <h3 className={styles.sectionTitle}>📅 Today's Appointments</h3>
+          {todayAppts.length === 0 ? (
+            <p className={styles.empty}>No appointments today</p>
+          ) : todayAppts.map(a => (
+            <div key={a.id} className={styles.apptRow} style={{justifyContent:'center',textAlign:'center'}}>
+              <div className={styles.apptTime}>{a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}</div>
+              <div style={{flex:1}}>
+                <div className={styles.apptName}>{a.patientName}</div>
+                <div className={styles.apptType}>{a.type}</div>
+              </div>
+              <span className={`badge ${STATUS_BADGE[a.status] || 'badge-waiting'}`}>{a.status || 'Scheduled'}</span>
+            </div>
+          ))}
+        </div>
 
         {/* Recent patients */}
         <div className="card">
