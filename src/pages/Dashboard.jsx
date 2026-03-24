@@ -82,7 +82,7 @@ export default function Dashboard() {
           {todayAppts.length === 0 ? (
             <p className={styles.empty}>No appointments today</p>
           ) : todayAppts.map(a => (
-            <div key={a.id} className={styles.apptRow}>
+            <div key={a.id} className={styles.apptRow} style={{justifyContent:'center',textAlign:'center'}}>
               <div className={styles.apptTime}>{a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}</div>
               <div style={{flex:1}}>
                 <div className={styles.apptName}>{a.patientName}</div>
