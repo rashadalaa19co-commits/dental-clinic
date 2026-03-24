@@ -194,13 +194,27 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Search */}
-      <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 16px',marginBottom:24,maxWidth:360}}>
-        <span style={{color:'var(--muted)',fontSize:16}}>🔍</span>
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Search patients..."
-          style={{border:'none',background:'transparent',color:'var(--text)',outline:'none',fontSize:14,width:'100%'}}/>
+    {/* Search + Upload */}
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24,flexWrap:'wrap'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 16px',flex:1,maxWidth:360}}>
+          <span style={{color:'var(--muted)',fontSize:16}}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)}
+            placeholder="Search patients..."
+            style={{border:'none',background:'transparent',color:'var(--text)',outline:'none',fontSize:14,width:'100%'}}/>
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" multiple
+          onChange={e => { if(selectedPatient) handleUpload(e, selectedPatient); }} style={{display:'none'}}/>
+        <button onClick={()=>{
+          const p = patients[0];
+          if(!p) return alert('No patients found!');
+          setSelectedPatient(p);
+          setTimeout(()=>fileRef.current?.click(), 100);
+        }}
+          style={{padding:'10px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+          📤 Upload Photo
+        </button>
       </div>
+      
 
       {/* Patients with photos */}
       {patientsWithPhotos.length > 0 && !search && (
