@@ -216,22 +216,7 @@ export default function Gallery() {
         </div>
       )}
 
-      {/* All patients (search results or all) */}
-      <div>
-        <h3 style={{fontSize:13,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:14}}>
-          {search ? `Search results (${allPatients.length})` : '👥 All Patients'}
-        </h3>
-        {allPatients.length === 0 ? (
-          <p style={{color:'var(--muted)',textAlign:'center',padding:40}}>No patients found</p>
-        ) : (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))',gap:16}}>
-            {allPatients.map(p => (
-              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs}/>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+
   );
 }
 
