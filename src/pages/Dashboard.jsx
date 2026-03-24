@@ -65,7 +65,7 @@ export default function Dashboard() {
           { label: 'In Progress', value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
           { label: 'Done', value: stats.done, color: 'var(--success)', icon: '✅' },
           { label: 'Not Started', value: stats.notStarted, color: 'var(--warning)', icon: '⏳' },
-          { label: "Today's Appts", value: todayAppts.length, color: 'var(--proth)', icon: '📅' },
+         
         ].map(s => (
           <div key={s.label} className={styles.statCard}>
             <div className={styles.statIcon}>{s.icon}</div>
