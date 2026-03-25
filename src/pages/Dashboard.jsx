@@ -102,7 +102,7 @@ const buildWhatsAppMessage = (appt) => {
 
     const message = buildWhatsAppMessage(appt);
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    window.location.href = url;
   };
 
   if (loading) return <div className={styles.loading}>Loading...</div>;
