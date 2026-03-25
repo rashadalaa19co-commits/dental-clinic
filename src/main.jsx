@@ -12,6 +12,7 @@ import Appointments from './pages/Appointments';
 import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import Locked from './pages/Locked';
+import Subscribe from './pages/Subscribe';
 import './styles/global.css';
 
 if ('serviceWorker' in navigator) {
@@ -60,6 +61,7 @@ function App() {
             <Route path="patients/:id/edit" element={<PatientForm />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="gallery" element={<Gallery />} />
+            <Route path="subscribe" element={<Subscribe />} />
             <Route path="finance" element={<ComingSoon title="💰 Finance" />} />
             <Route path="tools" element={<ComingSoon title="🔧 Tools" />} />
           </Route>
