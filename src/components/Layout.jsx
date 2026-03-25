@@ -7,6 +7,7 @@ const NAV = [
   { to: '/patients',     icon: '👥', label: 'Patients' },
   { to: '/appointments', icon: '📅', label: 'Appointments' },
   { to: '/gallery',      icon: '📸', label: 'Gallery' },
+  { to: '/subscribe',    icon: '💳', label: 'Subscribe' },
   { to: '/finance',      icon: '💰', label: 'Finance' },
   { to: '/tools',        icon: '🔧', label: 'Tools' },
 ];
