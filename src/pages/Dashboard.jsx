@@ -77,18 +77,20 @@ export default function Dashboard() {
     return normalizePhone(matchedPatient?.phone || '');
   };
 
-  const buildWhatsAppMessage = (appt) => {
-    const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
-    const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
+const buildWhatsAppMessage = (appt) => {
+  const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
+  const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
 
-    return `Hello ${appt.patientName || ''},
-This is a reminder of your appointment at DentaCare Pro.
-Date: ${date}
-Time: ${time}
-Type: ${appt.type || 'Dental appointment'}
+  const doctorName = user?.displayName || 'الدكتور';
 
-Please contact us if you need to reschedule.`;
-  };
+  return `أهلاً ${appt.patientName || ''}،
+نذكركم بموعدكم مع د. ${doctorName} 🦷
+📅 التاريخ: ${date}
+⏰ الوقت: ${time}
+📌 نوع الزيارة: ${appt.type || 'كشف أسنان'}
+
+يرجى التواصل معنا في حالة الرغبة في تأجيل الموعد.`;
+};
 
   const sendWhatsApp = (appt) => {
     const phone = getAppointmentPhone(appt);
