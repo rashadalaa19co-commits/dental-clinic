@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { MessageCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, getAppointments, checkAccess } from '../services/db';
 import { format, isToday, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { MessageCircle } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const STATUS_BADGE = {
@@ -26,11 +26,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([
-      getPatients(user.uid),
-      getAppointments(user.uid),
-      checkAccess(user.uid, user),
-    ])
+    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid, user)])
       .then(([p, a, acc]) => {
         setPatients(p);
         setAppts(a);
@@ -46,9 +42,6 @@ export default function Dashboard() {
     notStarted: patients.filter((p) => p.status === 'Not started').length,
   };
 
-  const todayAppts = appts.filter((a) => a.datetime && isToday(parseISO(a.datetime)));
-  const recent = patients.slice(0, 6);
-
   const patientsMap = useMemo(() => {
     const map = new Map();
     patients.forEach((p) => {
@@ -56,6 +49,9 @@ export default function Dashboard() {
     });
     return map;
   }, [patients]);
+
+  const todayAppts = appts.filter((a) => a.datetime && isToday(parseISO(a.datetime)));
+  const recent = patients.slice(0, 6);
 
   const normalizePhone = (phone = '') => {
     const digits = String(phone).replace(/\D/g, '');
@@ -84,32 +80,17 @@ export default function Dashboard() {
   const buildWhatsAppMessage = (appt) => {
     const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
     const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
-    const doctorName = user?.displayName?.split(' ')[0] || 'الدكتور';
 
-    return `أهلاً ${appt.patientName || ''}،
-نذكركم بموعدكم مع د. ${doctorName} 🦷
-📅 التاريخ: ${date}
-⏰ الوقت: ${time}
-📌 نوع الزيارة: ${appt.type || 'كشف'}
+    return `Hello ${appt.patientName || ''},
+This is a reminder of your appointment at DentaCare Pro.
+Date: ${date}
+Time: ${time}
+Type: ${appt.type || 'Dental appointment'}
 
-يرجى التواصل معنا في حالة الرغبة في تأجيل الموعد.`;
+Please contact us if you need to reschedule.`;
   };
 
-  const openSubscribeWhatsApp = () => {
-    const text = encodeURIComponent('Hi, I want to upgrade to Gold plan.');
-    window.open(`https://wa.me/201010562664?text=${text}`, '_blank');
-  };
-
-  const handleWhatsAppClick = (appt) => {
-    if (!access?.hasGallery) {
-      const goToSubscribe = window.confirm(
-        'WhatsApp feature is available only in Gold plan for 150 EGP/month.\n\nDo you want to subscribe now?'
-      );
-
-      if (goToSubscribe) openSubscribeWhatsApp();
-      return;
-    }
-
+  const sendWhatsApp = (appt) => {
     const phone = getAppointmentPhone(appt);
 
     if (!phone) {
@@ -143,14 +124,14 @@ export default function Dashboard() {
         >
           <div>
             <div style={{ fontWeight: 700, color: 'var(--danger)', fontSize: 15 }}>
-              🔒 Free Trial — {access.patientCount}/10 patients used
+              🔒 Free Trial — {access.patientCount}/7 patients used
             </div>
             <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
-              Upgrade to unlock more features!
+              Upgrade to unlock unlimited patients!
             </div>
           </div>
           <a
-            href="https://wa.me/201010562664"
+            href="https://wa.me/201555354570"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -197,10 +178,7 @@ export default function Dashboard() {
 
       <div className={styles.grid2}>
         <div className="card">
-          <div className={styles.cardHeader}>
-            <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
-          </div>
-
+          <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
           {todayAppts.length === 0 ? (
             <p className={styles.empty}>No appointments today</p>
           ) : (
@@ -210,7 +188,7 @@ export default function Dashboard() {
                   {a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}
                 </div>
 
-                <div style={{ flex: 1 }}>
+                <div className={styles.apptInfo}>
                   <div className={styles.apptName}>{a.patientName}</div>
                   <div className={styles.apptType}>{a.type}</div>
                 </div>
@@ -221,8 +199,9 @@ export default function Dashboard() {
 
                 <button
                   className={styles.whatsBtn}
-                  onClick={() => handleWhatsAppClick(a)}
-                  title={access?.hasGallery ? 'Send WhatsApp' : 'Gold plan only'}
+                  onClick={() => sendWhatsApp(a)}
+                  title="Send WhatsApp"
+                  type="button"
                 >
                   <MessageCircle size={16} />
                 </button>
@@ -250,7 +229,6 @@ export default function Dashboard() {
               + New
             </button>
           </div>
-
           {recent.length === 0 ? (
             <p className={styles.empty}>No patients yet</p>
           ) : (
