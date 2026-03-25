@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, getAppointments, checkAccess } from '../services/db';
 import { format, isToday, parseISO } from 'date-fns';
@@ -6,8 +6,13 @@ import { useNavigate } from 'react-router-dom';
 import styles from './Dashboard.module.css';
 
 const STATUS_BADGE = {
-  'Done': 'badge-done', 'In progress': 'badge-progress',
-  'Not started': 'badge-waiting', 'Follow Up': 'badge-followup', 'Lap waiting': 'badge-lap'
+  'Done': 'badge-done',
+  'In progress': 'badge-progress',
+  'Not started': 'badge-waiting',
+  'Follow Up': 'badge-followup',
+  'Lap waiting': 'badge-lap',
+  'Scheduled': 'badge-waiting',
+  'Confirmed': 'badge-progress',
 };
 
 export default function Dashboard() {
@@ -20,8 +25,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid, user)])
-      .then(([p, a, acc]) => { setPatients(p); setAppts(a); setAccess(acc); })
+    Promise.all([
+      getPatients(user.uid),
+      getAppointments(user.uid),
+      checkAccess(user.uid, user),
+    ])
+      .then(([p, a, acc]) => {
+        setPatients(p);
+        setAppts(a);
+        setAccess(acc);
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -32,21 +45,127 @@ export default function Dashboard() {
     notStarted: patients.filter(p => p.status === 'Not started').length,
   };
 
+  const patientsMap = useMemo(() => {
+    const map = new Map();
+    patients.forEach(p => {
+      if (p.id) map.set(p.id, p);
+    });
+    return map;
+  }, [patients]);
+
   const todayAppts = appts.filter(a => a.datetime && isToday(parseISO(a.datetime)));
   const recent = patients.slice(0, 6);
+
+  const normalizePhone = (phone = '') => {
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) return '';
+
+    if (digits.startsWith('20')) return digits;
+    if (digits.startsWith('0')) return `20${digits.slice(1)}`;
+
+    return digits;
+  };
+
+  const getAppointmentPhone = (appt) => {
+    if (appt.phone) return normalizePhone(appt.phone);
+
+    if (appt.patientId && patientsMap.has(appt.patientId)) {
+      return normalizePhone(patientsMap.get(appt.patientId)?.phone || '');
+    }
+
+    const matchedPatient = patients.find(
+      p => p.name?.trim()?.toLowerCase() === appt.patientName?.trim()?.toLowerCase()
+    );
+
+    return normalizePhone(matchedPatient?.phone || '');
+  };
+
+  const buildWhatsAppMessage = (appt) => {
+    const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
+    const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
+
+    return `Hello ${appt.patientName || ''},
+This is a reminder of your appointment at DentaCare Pro.
+Date: ${date}
+Time: ${time}
+Type: ${appt.type || 'Dental appointment'}
+
+Please contact us if you need to reschedule.`;
+  };
+
+  const sendWhatsApp = (appt) => {
+    const phone = getAppointmentPhone(appt);
+
+    if (!phone) {
+      alert(`No phone number found for ${appt.patientName || 'this patient'}`);
+      return;
+    }
+
+    const message = buildWhatsAppMessage(appt);
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
+  const sendAllWhatsApp = () => {
+    const validAppointments = todayAppts.filter(a => getAppointmentPhone(a));
+
+    if (!validAppointments.length) {
+      alert('No valid phone numbers found for today’s appointments');
+      return;
+    }
+
+    validAppointments.forEach((appt, index) => {
+      const phone = getAppointmentPhone(appt);
+      const message = buildWhatsAppMessage(appt);
+      const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+      setTimeout(() => {
+        window.open(url, '_blank');
+      }, index * 400);
+    });
+  };
 
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
     <div>
       {access && !access.isActive && (
-        <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:12,padding:'14px 20px',marginBottom:20,display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:12}}>
+        <div
+          style={{
+            background: 'rgba(248,81,73,0.1)',
+            border: '1px solid rgba(248,81,73,0.3)',
+            borderRadius: 12,
+            padding: '14px 20px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
           <div>
-            <div style={{fontWeight:700,color:'var(--danger)',fontSize:15}}>🔒 Free Trial — {access.patientCount}/7 patients used</div>
-            <div style={{color:'var(--muted)',fontSize:13,marginTop:4}}>Upgrade to unlock unlimited patients!</div>
+            <div style={{ fontWeight: 700, color: 'var(--danger)', fontSize: 15 }}>
+              🔒 Free Trial — {access.patientCount}/7 patients used
+            </div>
+            <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
+              Upgrade to unlock unlimited patients!
+            </div>
           </div>
-          <a href="https://wa.me/201555354570" target="_blank"
-            style={{padding:'8px 18px',background:'var(--success)',color:'#000',borderRadius:8,fontSize:14,fontWeight:600,textDecoration:'none'}}>
+          <a
+            href="https://wa.me/201555354570"
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              padding: '8px 18px',
+              background: 'var(--success)',
+              color: '#000',
+              borderRadius: 8,
+              fontSize: 14,
+              fontWeight: 600,
+              textDecoration: 'none',
+            }}
+          >
             📱 Contact on WhatsApp
           </a>
         </div>
@@ -55,7 +174,10 @@ export default function Dashboard() {
       <div className={styles.header}>
         <div>
           <h1 className={styles.title}>Dashboard</h1>
-          <p className={styles.sub}>{format(new Date(), 'EEEE, MMMM d yyyy')} · Welcome back, Dr. {user?.displayName?.split(' ')[0]}</p>
+          <p className={styles.sub}>
+            {format(new Date(), 'EEEE, MMMM d yyyy')} · Welcome back, Dr.{' '}
+            {user?.displayName?.split(' ')[0]}
+          </p>
         </div>
       </div>
 
@@ -65,59 +187,114 @@ export default function Dashboard() {
           { label: 'In Progress', value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
           { label: 'Done', value: stats.done, color: 'var(--success)', icon: '✅' },
           { label: 'Not Started', value: stats.notStarted, color: 'var(--warning)', icon: '⏳' },
-         
         ].map(s => (
           <div key={s.label} className={styles.statCard}>
             <div className={styles.statIcon}>{s.icon}</div>
-            <div className={styles.statNum} style={{ color: s.color }}>{s.value}</div>
+            <div className={styles.statNum} style={{ color: s.color }}>
+              {s.value}
+            </div>
             <div className={styles.statLabel}>{s.label}</div>
           </div>
         ))}
       </div>
 
       <div className={styles.grid2}>
-        {/* Today's appointments */}
         <div className="card">
-          <h3 className={styles.sectionTitle}>📅 Today's Appointments</h3>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
+
+            {todayAppts.length > 0 && (
+              <button className={styles.sendAllBtn} onClick={sendAllWhatsApp}>
+                Send All
+              </button>
+            )}
+          </div>
+
           {todayAppts.length === 0 ? (
             <p className={styles.empty}>No appointments today</p>
-          ) : todayAppts.map(a => (
-            <div key={a.id} className={styles.apptRow} style={{justifyContent:'center',textAlign:'center'}}>
-              <div className={styles.apptTime}>{a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}</div>
-              <div style={{flex:1}}>
-                <div className={styles.apptName}>{a.patientName}</div>
-                <div className={styles.apptType}>{a.type}</div>
+          ) : (
+            todayAppts.map(a => (
+              <div key={a.id} className={styles.apptRow}>
+                <div className={styles.apptTime}>
+                  {a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}
+                </div>
+
+                <div style={{ flex: 1 }}>
+                  <div className={styles.apptName}>{a.patientName}</div>
+                  <div className={styles.apptType}>{a.type}</div>
+                </div>
+
+                <span className={`badge ${STATUS_BADGE[a.status] || 'badge-waiting'}`}>
+                  {a.status || 'Scheduled'}
+                </span>
+
+                <button
+                  className={styles.whatsBtn}
+                  onClick={() => sendWhatsApp(a)}
+                  title="Send WhatsApp"
+                >
+                  WhatsApp
+                </button>
               </div>
-              <span className={`badge ${STATUS_BADGE[a.status] || 'badge-waiting'}`}>{a.status || 'Scheduled'}</span>
-            </div>
-          ))}
+            ))
+          )}
         </div>
 
-        {/* Recent patients */}
         <div className="card">
           <div className={styles.cardHeader}>
             <h3 className={styles.sectionTitle}>👥 Recent Patients</h3>
-            <button onClick={() => nav('/patients/new')}
-              style={{padding:'6px 14px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:13,fontWeight:600,cursor:'pointer'}}>
+            <button
+              onClick={() => nav('/patients/new')}
+              style={{
+                padding: '6px 14px',
+                background: 'var(--accent)',
+                color: '#000',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
               + New
             </button>
           </div>
+
           {recent.length === 0 ? (
             <p className={styles.empty}>No patients yet</p>
-          ) : recent.map(p => (
-            <div key={p.id} className={styles.patientRow}>
-              <div className={styles.patientAvatar}>{p.name?.[0]?.toUpperCase()}</div>
-              <div style={{flex:1}}>
-                <div className={styles.patientName}>{p.name}</div>
-                <div className={styles.patientMeta}>{p.procedure || '-'} · {p.tooth || ''}</div>
+          ) : (
+            recent.map(p => (
+              <div key={p.id} className={styles.patientRow}>
+                <div className={styles.patientAvatar}>{p.name?.[0]?.toUpperCase()}</div>
+                <div style={{ flex: 1 }}>
+                  <div className={styles.patientName}>{p.name}</div>
+                  <div className={styles.patientMeta}>
+                    {p.procedure || '-'} · {p.tooth || ''}
+                  </div>
+                </div>
+                <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>
+                  {p.status || '-'}
+                </span>
+                <button
+                  onClick={() => nav(`/patients/${p.id}`)}
+                  style={{
+                    padding: '5px 12px',
+                    background: 'rgba(0,212,255,0.1)',
+                    color: 'var(--accent)',
+                    border: '1px solid rgba(0,212,255,0.3)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    marginLeft: 8,
+                  }}
+                >
+                  Open
+                </button>
               </div>
-              <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>{p.status || '-'}</span>
-              <button onClick={() => nav(`/patients/${p.id}`)}
-                style={{padding:'5px 12px',background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',marginLeft:8}}>
-                Open
-              </button>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
