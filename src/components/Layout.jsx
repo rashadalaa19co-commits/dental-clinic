@@ -9,7 +9,6 @@ const NAV = [
   { to: '/gallery',      icon: '📸', label: 'Gallery' },
   { to: '/finance',      icon: '💰', label: 'Finance' },
   { to: '/tools',        icon: '🔧', label: 'Tools' },
-  <Link to="/subscribe">Subscribe</Link>
 ];
 
 export default function Layout() {
