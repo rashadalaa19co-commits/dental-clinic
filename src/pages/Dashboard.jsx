@@ -92,19 +92,34 @@ const buildWhatsAppMessage = (appt) => {
 يرجى التواصل معنا في حالة الرغبة في تأجيل الموعد.`;
 };
 
-  const sendWhatsApp = (appt) => {
-    const phone = getAppointmentPhone(appt);
+ const sendWhatsApp = (appt) => {
+  const phone = getAppointmentPhone(appt);
 
-    if (!phone) {
-      alert(`No phone number found for ${appt.patientName || 'this patient'}`);
-      return;
-    }
+  if (!phone) {
+    alert(`No phone number found for ${appt.patientName || 'this patient'}`);
+    return;
+  }
 
-    const message = buildWhatsAppMessage(appt);
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.location.href = url;
-  };
+  const message = buildWhatsAppMessage(appt);
 
+  const isMobile = /iPhone|Android|iPad/i.test(navigator.userAgent);
+
+  const mobileUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+  const webUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+  if (isMobile) {
+    // يفتح واتساب مباشرة بدون tab جديد
+    window.location.href = mobileUrl;
+
+    // fallback لو WhatsApp مش موجود
+    setTimeout(() => {
+      window.location.href = webUrl;
+    }, 800);
+  } else {
+    // desktop → tab جديد
+    window.open(webUrl, '_blank');
+  }
+};
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
