@@ -12,12 +12,12 @@ const PLANS = [
     period: '/ month',
     badge: 'Start Here',
     features: [
-      'Up to 10 patients',
-      'Appointments management',
-      'Patient details',
-      'Simple dashboard',
-      'No Gallery',
-      'No WhatsApp reminders',
+      { text: 'Up to 10 patients', available: true },
+      { text: 'Appointments management', available: true },
+      { text: 'Patient details', available: true },
+      { text: 'Simple dashboard', available: true },
+      { text: 'Gallery', available: false },
+      { text: 'WhatsApp reminders', available: false },
     ],
   },
   {
@@ -27,12 +27,12 @@ const PLANS = [
     period: '/ month',
     badge: 'Best Value',
     features: [
-      'Unlimited patients',
-      'Appointments management',
-      'Full patient records',
-      'Simple dashboard',
-      'No Gallery',
-      'No WhatsApp reminders',
+      { text: 'Unlimited patients', available: true },
+      { text: 'Appointments management', available: true },
+      { text: 'Full patient records', available: true },
+      { text: 'Simple dashboard', available: true },
+      { text: 'Gallery', available: false },
+      { text: 'WhatsApp reminders', available: false },
     ],
   },
   {
@@ -42,12 +42,12 @@ const PLANS = [
     period: '/ month',
     badge: 'Most Popular',
     features: [
-      'Unlimited patients',
-      'Appointments management',
-      'Full patient records',
-      'Gallery feature',
-      'WhatsApp reminders',
-      'Best for active clinics',
+      { text: 'Unlimited patients', available: true },
+      { text: 'Appointments management', available: true },
+      { text: 'Full patient records', available: true },
+      { text: 'Gallery feature', available: true },
+      { text: 'WhatsApp reminders', available: true },
+      { text: 'Best for active clinics', available: true },
     ],
   },
 ];
@@ -139,9 +139,14 @@ export default function Subscribe() {
 
               <ul className={styles.features}>
                 {plan.features.map((feature) => (
-                  <li key={feature} className={styles.featureItem}>
-                    <span className={styles.check}>✓</span>
-                    <span>{feature}</span>
+                  <li
+                    key={feature.text}
+                    className={`${styles.featureItem} ${!feature.available ? styles.featureOff : ''}`}
+                  >
+                    <span className={feature.available ? styles.check : styles.cross}>
+                      {feature.available ? '✓' : '✕'}
+                    </span>
+                    <span>{feature.text}</span>
                   </li>
                 ))}
               </ul>
