@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { MessageCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, getAppointments, checkAccess } from '../services/db';
 import { format, isToday, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { MessageCircle } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const STATUS_BADGE = {
@@ -26,7 +26,11 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getPatients(user.uid), getAppointments(user.uid), checkAccess(user.uid, user)])
+    Promise.all([
+      getPatients(user.uid),
+      getAppointments(user.uid),
+      checkAccess(user.uid, user),
+    ])
       .then(([p, a, acc]) => {
         setPatients(p);
         setAppts(a);
@@ -42,6 +46,9 @@ export default function Dashboard() {
     notStarted: patients.filter((p) => p.status === 'Not started').length,
   };
 
+  const todayAppts = appts.filter((a) => a.datetime && isToday(parseISO(a.datetime)));
+  const recent = patients.slice(0, 6);
+
   const patientsMap = useMemo(() => {
     const map = new Map();
     patients.forEach((p) => {
@@ -49,9 +56,6 @@ export default function Dashboard() {
     });
     return map;
   }, [patients]);
-
-  const todayAppts = appts.filter((a) => a.datetime && isToday(parseISO(a.datetime)));
-  const recent = patients.slice(0, 6);
 
   const normalizePhone = (phone = '') => {
     const digits = String(phone).replace(/\D/g, '');
@@ -77,49 +81,47 @@ export default function Dashboard() {
     return normalizePhone(matchedPatient?.phone || '');
   };
 
-const buildWhatsAppMessage = (appt) => {
-  const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
-  const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
+  const buildWhatsAppMessage = (appt) => {
+    const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
+    const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
+    const doctorName = user?.displayName?.split(' ')[0] || 'الدكتور';
 
-  const doctorName = user?.displayName || 'الدكتور';
-
-  return `أهلاً ${appt.patientName || ''}،
+    return `أهلاً ${appt.patientName || ''}،
 نذكركم بموعدكم مع د. ${doctorName} 🦷
 📅 التاريخ: ${date}
 ⏰ الوقت: ${time}
-📌 نوع الزيارة: ${appt.type || 'كشف أسنان'}
+📌 نوع الزيارة: ${appt.type || 'كشف'}
 
 يرجى التواصل معنا في حالة الرغبة في تأجيل الموعد.`;
-};
+  };
 
- const sendWhatsApp = (appt) => {
-  const phone = getAppointmentPhone(appt);
+  const openSubscribeWhatsApp = () => {
+    const text = encodeURIComponent('Hi, I want to upgrade to Gold plan.');
+    window.open(`https://wa.me/201010562664?text=${text}`, '_blank');
+  };
 
-  if (!phone) {
-    alert(`No phone number found for ${appt.patientName || 'this patient'}`);
-    return;
-  }
+  const handleWhatsAppClick = (appt) => {
+    if (!access?.hasGallery) {
+      const goToSubscribe = window.confirm(
+        'WhatsApp feature is available only in Gold plan for 150 EGP/month.\n\nDo you want to subscribe now?'
+      );
 
-  const message = buildWhatsAppMessage(appt);
+      if (goToSubscribe) openSubscribeWhatsApp();
+      return;
+    }
 
-  const isMobile = /iPhone|Android|iPad/i.test(navigator.userAgent);
+    const phone = getAppointmentPhone(appt);
 
-  const mobileUrl = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
-  const webUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    if (!phone) {
+      alert(`No phone number found for ${appt.patientName || 'this patient'}`);
+      return;
+    }
 
-  if (isMobile) {
-    // يفتح واتساب مباشرة بدون tab جديد
-    window.location.href = mobileUrl;
+    const message = buildWhatsAppMessage(appt);
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
 
-    // fallback لو WhatsApp مش موجود
-    setTimeout(() => {
-      window.location.href = webUrl;
-    }, 800);
-  } else {
-    // desktop → tab جديد
-    window.open(webUrl, '_blank');
-  }
-};
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
@@ -141,14 +143,14 @@ const buildWhatsAppMessage = (appt) => {
         >
           <div>
             <div style={{ fontWeight: 700, color: 'var(--danger)', fontSize: 15 }}>
-              🔒 Free Trial — {access.patientCount}/7 patients used
+              🔒 Free Trial — {access.patientCount}/10 patients used
             </div>
             <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 4 }}>
-              Upgrade to unlock unlimited patients!
+              Upgrade to unlock more features!
             </div>
           </div>
           <a
-            href="https://wa.me/201555354570"
+            href="https://wa.me/201010562664"
             target="_blank"
             rel="noreferrer"
             style={{
@@ -195,7 +197,10 @@ const buildWhatsAppMessage = (appt) => {
 
       <div className={styles.grid2}>
         <div className="card">
-          <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
+          <div className={styles.cardHeader}>
+            <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
+          </div>
+
           {todayAppts.length === 0 ? (
             <p className={styles.empty}>No appointments today</p>
           ) : (
@@ -205,7 +210,7 @@ const buildWhatsAppMessage = (appt) => {
                   {a.datetime ? format(parseISO(a.datetime), 'HH:mm') : '--'}
                 </div>
 
-                <div className={styles.apptInfo}>
+                <div style={{ flex: 1 }}>
                   <div className={styles.apptName}>{a.patientName}</div>
                   <div className={styles.apptType}>{a.type}</div>
                 </div>
@@ -216,9 +221,8 @@ const buildWhatsAppMessage = (appt) => {
 
                 <button
                   className={styles.whatsBtn}
-                  onClick={() => sendWhatsApp(a)}
-                  title="Send WhatsApp"
-                  type="button"
+                  onClick={() => handleWhatsAppClick(a)}
+                  title={access?.hasGallery ? 'Send WhatsApp' : 'Gold plan only'}
                 >
                   <MessageCircle size={16} />
                 </button>
@@ -246,6 +250,7 @@ const buildWhatsAppMessage = (appt) => {
               + New
             </button>
           </div>
+
           {recent.length === 0 ? (
             <p className={styles.empty}>No patients yet</p>
           ) : (
