@@ -35,9 +35,11 @@
 }
 
 .title {
-  font-size: 30px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 36px;
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
   margin-bottom: 8px;
 }
 
@@ -63,7 +65,7 @@
 }
 
 .currentValue {
-  font-family: 'Syne', sans-serif;
+  font-family: 'DM Sans', sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: var(--text);
@@ -135,7 +137,8 @@
 }
 
 .planName {
-  font-size: 24px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 22px;
   font-weight: 800;
   margin-bottom: 10px;
 }
@@ -147,10 +150,10 @@
 }
 
 .price {
-  font-size: 30px;
-  font-family: 'Syne', sans-serif;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 34px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.1;
 }
 
 .period {
@@ -177,8 +180,18 @@
   line-height: 1.5;
 }
 
+.featureOff {
+  color: var(--muted);
+}
+
 .check {
   color: var(--success);
+  font-weight: 800;
+  margin-top: 1px;
+}
+
+.cross {
+  color: var(--danger);
   font-weight: 800;
   margin-top: 1px;
 }
