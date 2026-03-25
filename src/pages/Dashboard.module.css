@@ -20,8 +20,11 @@
 .sectionTitle { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
 
 .apptRow {
-  display: flex; align-items: center; gap: 12px;
-  padding: 10px 0; border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
 }
 .apptRow:last-child { border-bottom: none; }
 .apptTime { font-size: 18px; font-weight: 700; font-family: 'Syne', sans-serif; color: var(--accent); min-width: 52px; }
@@ -49,50 +52,23 @@
 .cardHeader { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
 .cardHeader .sectionTitle { margin-bottom:0; }
 
-
-.sendAllBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: rgba(0, 212, 255, 0.12);
-  color: var(--accent);
-  border: 1px solid rgba(0, 212, 255, 0.35);
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: 0.2s ease;
-}
-
-.sendAllBtn:hover {
-  background: rgba(0, 212, 255, 0.18);
-}
-
 .whatsBtn {
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   background: rgba(63, 185, 80, 0.12);
   color: var(--success);
   border: 1px solid rgba(63, 185, 80, 0.35);
   border-radius: 8px;
   cursor: pointer;
   transition: 0.2s ease;
+  flex-shrink: 0;
 }
 
 .whatsBtn:hover {
   background: rgba(63, 185, 80, 0.2);
   transform: scale(1.05);
-  box-shadow: 0 0 10px rgba(63, 185, 80, 0.25);
-}
-
-@media (max-width: 768px) {
-  .sendAllBtn span {
-    display: none;
-  }
+  box-shadow: 0 0 10px rgba(63, 185, 80, 0.3);
 }
