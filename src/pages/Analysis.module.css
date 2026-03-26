@@ -17,8 +17,7 @@
   font-size:12px; letter-spacing:.08em; text-transform:uppercase;
   color: var(--accent); background: rgba(0,212,255,0.12); border:1px solid rgba(0,212,255,0.18);
 }
-.title { font-size: clamp(28px, 4vw, 42px); line-height:1.04; margin-bottom:12px; }
-.subtitle { max-width: 720px; color: var(--muted); font-size: 15px; line-height: 1.7; }
+.title { font-size: clamp(28px, 4vw, 42px); line-height:1.04; margin-bottom:16px; }
 .scoreCard {
   background: rgba(13,17,23,.72); border:1px solid var(--border); border-radius: 16px;
   padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
@@ -38,21 +37,21 @@
 .scoreRing > div { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; }
 .scoreRing strong { font-size: 40px; font-family:'Syne', sans-serif; }
 .scoreRing span { color: var(--muted); font-size: 12px; }
-.statsGrid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:16px; }
-.statCard {
-  display:flex; flex-direction:column; gap:8px; position:relative; overflow:hidden;
-  animation: fadeUp .55s ease;
+.breakdownList { display:grid; gap:10px; }
+.breakdownItem {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.06);
+  background: rgba(8, 15, 25, 0.4);
 }
-.statCard::after {
-  content:''; position:absolute; inset:auto -20px -40px auto; width:90px; height:90px;
-  background: radial-gradient(circle, rgba(0,212,255,.16), transparent 70%);
+.breakdownItem strong { display:block; font-size:14px; margin-bottom:4px; }
+.breakdownItem span { color: var(--muted); font-size:12px; line-height:1.5; }
+.breakdownScore {
+  min-width:72px; text-align:center; font-weight:700; font-size:15px;
+  padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.04);
 }
-.statCard span { color: var(--muted); font-size: 13px; }
-.statCard strong { font-size: 32px; font-family:'Syne', sans-serif; }
-.statCard small { color: var(--text); opacity: .75; font-size: 12px; }
 .mainGrid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:16px; }
-.bottomGrid { display:grid; grid-template-columns: 1.2fr .95fr; gap:16px; }
-.chartCard, .insightsCard, .recentCard { animation: fadeUp .65s ease; }
+.bottomGrid { display:grid; grid-template-columns: 1.05fr .95fr; gap:16px; }
+.chartCard, .insightsCard, .titlesCard { animation: fadeUp .65s ease; }
 .cardHead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .cardHead h3 { font-size: 20px; margin-bottom:6px; }
 .cardHead p { color: var(--muted); font-size: 13px; }
@@ -77,6 +76,20 @@
 .legendRight strong { font-size: 14px; }
 .legendRight span { color: var(--muted); font-size: 12px; }
 .legendDot { width:10px; height:10px; border-radius:50%; box-shadow:0 0 14px currentColor; }
+.chartFooter {
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.06);
+}
+.metricFooterBox {
+  display:grid; place-items:center; gap:4px; text-align:center;
+  min-height: 86px; border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.05);
+}
+.metricFooterBox span, .growthBox span { color: var(--muted); font-size: 12px; }
+.metricFooterBox strong, .growthBox strong {
+  font-size: 28px; font-family:'Syne', sans-serif;
+}
+.metricFooterBox small, .growthBox small { color: var(--muted); font-size: 12px; }
 .barChart {
   height: 280px; display:grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap:12px; align-items:end;
 }
@@ -100,22 +113,45 @@
   background: rgba(0,212,255,0.1); font-size:18px;
 }
 .insightItem p { color: var(--text); line-height:1.6; font-size: 14px; }
-.emptyState {
-  min-height: 220px; border:1px dashed rgba(255,255,255,0.12); border-radius:14px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:8px; color: var(--muted); padding:22px;
+.growthBox {
+  margin-top: 16px; padding: 16px; border-radius: 16px;
+  display:grid; gap:10px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+  border:1px solid rgba(255,255,255,0.05);
 }
-.patientList { display:flex; flex-direction:column; gap:10px; }
-.patientRow {
-  display:grid; grid-template-columns: 46px 1fr auto; align-items:center; gap:12px;
-  padding:12px; border-radius: 14px; background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04);
+.growthBox p { color: var(--text); font-size: 13px; line-height: 1.5; }
+.titleList { display:flex; flex-direction:column; gap:10px; }
+.titleGroup {
+  border:1px solid rgba(255,255,255,0.05); border-radius:14px; overflow:hidden;
+  background: rgba(255,255,255,0.02);
 }
-.avatar {
-  width:46px; height:46px; border-radius:50%; display:grid; place-items:center; font-weight:700;
-  background: linear-gradient(135deg, rgba(0,212,255,0.22), rgba(124,58,237,0.24));
+.titleRow {
+  width:100%; background: transparent; border:none; color: inherit; cursor:pointer;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:14px 16px; text-align:left;
 }
-.patientMeta { display:flex; flex-direction:column; gap:4px; }
-.patientMeta strong { font-size: 14px; }
-.patientMeta span, .rowDate { color: var(--muted); font-size: 12px; }
+.titleRow strong { display:block; font-size:15px; }
+.titleRow span { color: var(--muted); font-size:12px; }
+.titleRight {
+  display:flex; align-items:center; gap:14px;
+}
+.titleRight > div { text-align:right; }
+.chevron {
+  font-size:14px; color: var(--accent); transition: transform .22s ease;
+}
+.chevronOpen { transform: rotate(180deg); }
+.levelsPanel {
+  display:flex; flex-direction:column; gap:8px; padding:0 14px 14px;
+}
+.levelRow {
+  display:grid; grid-template-columns: 26px 1fr auto; gap:12px; align-items:center;
+  padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.02);
+  border:1px solid rgba(255,255,255,0.04);
+}
+.levelIcon { text-align:center; }
+.levelMeta strong { display:block; font-size:14px; }
+.levelMeta span { color: var(--muted); font-size:12px; }
+.levelHint { font-size:12px; color: var(--accent); white-space:nowrap; }
 
 @keyframes growUp {
   from { height: 0; opacity: .4; }
@@ -127,13 +163,11 @@
 }
 
 @media (max-width: 1100px) {
-  .statsGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .mainGrid, .bottomGrid, .hero { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  .statsGrid { grid-template-columns: 1fr; }
   .mainGrid { grid-template-columns: 1fr; }
   .barChart { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
-  .patientRow { grid-template-columns: 46px 1fr; }
-  .rowDate { display:none; }
+  .titleRow, .levelRow { grid-template-columns: 1fr; }
+  .titleRight > div { text-align:left; }
 }
