@@ -57,7 +57,7 @@ function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, onWhatsApp, patien
                 <div key={a.id || i} className={styles.folderItem}>
                   <div className={`${styles.folderDot} ${isPast ? styles.folderDotPast : styles.folderDotUpcoming}`}></div>
                   <div className={styles.folderItemInfo}>
-                    <div className={styles.folderItemDate}>{d ? format(d, 'd MMM · HH:mm') : '--'}</div>
+                    <div className={styles.folderItemDate}>{d ? format(d, 'd MMM · hh:mm a') : '--'}</div>
                     <div className={styles.folderItemMeta}>{a.type || '-'} {a.notes ? `· ${a.notes}` : ''}</div>
                   </div>
                   <select value={a.status || 'Scheduled'} onChange={(e) => onStatus(a.id, e.target.value)} className={styles.inlineSelect}>
@@ -127,7 +127,7 @@ export default function Appointments() {
       if (!appt.datetime) continue;
       const existing = parseISO(appt.datetime);
       const diff = Math.abs(differenceInMinutes(newTime, existing));
-      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'HH:mm'), diff };
+      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'hh:mm a'), diff };
     }
     return null;
   };
@@ -188,7 +188,7 @@ export default function Appointments() {
   };
 
   const buildWhatsAppMessage = (appt) => {
-    const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
+    const time = appt.datetime ? format(parseISO(appt.datetime), 'hh:mm a') : '--';
     const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
     return `Hello ${appt.patientName || ''},\nThis is a reminder of your appointment at AuraDent.\nDate: ${date}\nTime: ${time}\nType: ${appt.type || 'Dental appointment'}\n\nPlease contact us if you need to reschedule.`;
   };
@@ -426,7 +426,7 @@ export default function Appointments() {
                     </div>
 
                     <div className={styles.apptTimeWrap}>
-                      <div className={styles.apptTime}>{d ? format(d, 'HH:mm') : '--:--'}</div>
+                      <div className={styles.apptTime}>{d ? format(d, 'hh:mm a') : '--:--'}</div>
                       <div className={styles.apptMini}>{isNow ? 'Today' : isTom ? 'Tomorrow' : d ? format(d, 'dd MMM') : '--'}</div>
                     </div>
 
