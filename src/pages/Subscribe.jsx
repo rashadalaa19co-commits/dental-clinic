@@ -8,8 +8,6 @@ const PLANS = [
   {
     key: 'free',
     name: 'Free',
-    price: '0 EGP',
-    period: '/ month',
     badge: 'Start Here',
     features: [
       { text: 'Up to 10 patients', available: true },
@@ -23,9 +21,7 @@ const PLANS = [
   {
     key: 'silver',
     name: 'Silver',
-    price: '99 EGP',
-    period: '/ month',
-    badge: 'Best Value',
+    badge: 'Popular Choice',
     features: [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
@@ -38,9 +34,7 @@ const PLANS = [
   {
     key: 'gold',
     name: 'Gold',
-    price: '149 EGP',
-    period: '/ month',
-    badge: 'Most Popular',
+    badge: 'Most Complete',
     features: [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
@@ -57,6 +51,7 @@ export default function Subscribe() {
   const { user } = useAuth();
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [billing, setBilling] = useState('monthly');
 
   useEffect(() => {
     if (!user) return;
@@ -71,12 +66,31 @@ export default function Subscribe() {
   const subscribeLink = useMemo(() => {
     const doctorName = user?.displayName || 'Doctor';
     return (planName) => {
+      const billingLabel =
+        billing === 'monthly' ? 'monthly' : billing === 'semi' ? '6 months' : 'yearly';
+
       const text = encodeURIComponent(
-        `Hi, I want to subscribe to the ${planName} plan for ${doctorName}.`
+        `Hi, I want to subscribe to the ${planName} plan (${billingLabel}) for ${doctorName}.`
       );
       return `https://wa.me/201010562664?text=${text}`;
     };
-  }, [user]);
+  }, [user, billing]);
+
+  const getPriceData = (planKey) => {
+    if (planKey === 'free') {
+      return { current: '0 EGP', old: null, period: '/ forever' };
+    }
+
+    if (planKey === 'silver') {
+      if (billing === 'monthly') return { current: '99 EGP', old: null, period: '/ month' };
+      if (billing === 'semi') return { current: '500 EGP', old: '600 EGP', period: '/ 6 months' };
+      return { current: '800 EGP', old: '1200 EGP', period: '/ year' };
+    }
+
+    if (billing === 'monthly') return { current: '199 EGP', old: null, period: '/ month' };
+    if (billing === 'semi') return { current: '800 EGP', old: '1200 EGP', period: '/ 6 months' };
+    return { current: '1600 EGP', old: '2400 EGP', period: '/ year' };
+  };
 
   const getButtonText = (planKey) => {
     if (planKey === currentPlan) return 'Current Plan';
@@ -103,7 +117,7 @@ export default function Subscribe() {
           <div className={styles.eyebrow}>Plans & Pricing</div>
           <h1 className={styles.title}>Choose the plan that fits your clinic</h1>
           <p className={styles.sub}>
-            Start free, upgrade anytime, and unlock more powerful tools as your clinic grows.
+            Start free, upgrade anytime, and pick the billing cycle that works best for your clinic.
           </p>
         </div>
 
@@ -118,22 +132,54 @@ export default function Subscribe() {
         </div>
       </div>
 
+      <div className={styles.toggleWrap}>
+        <button
+          className={`${styles.toggleBtn} ${billing === 'monthly' ? styles.toggleActive : ''}`}
+          onClick={() => setBilling('monthly')}
+        >
+          Monthly
+        </button>
+        <button
+          className={`${styles.toggleBtn} ${billing === 'semi' ? styles.toggleActive : ''}`}
+          onClick={() => setBilling('semi')}
+        >
+          6 Months
+        </button>
+        <button
+          className={`${styles.toggleBtn} ${billing === 'yearly' ? styles.toggleActive : ''}`}
+          onClick={() => setBilling('yearly')}
+        >
+          Yearly
+        </button>
+      </div>
+
       <div className={styles.grid}>
         {PLANS.map((plan) => {
           const isCurrent = plan.key === currentPlan;
+          const isSilver = plan.key === 'silver';
           const isGold = plan.key === 'gold';
+          const priceData = getPriceData(plan.key);
 
           return (
             <div
               key={plan.key}
-              className={`${styles.card} ${isGold ? styles.highlight : ''} ${isCurrent ? styles.currentCard : ''}`}
+              className={`${styles.card} ${isSilver ? styles.silverCard : ''} ${isGold ? styles.goldCard : ''} ${isCurrent ? styles.currentCard : ''}`}
             >
               <div className={styles.cardTop}>
-                <div className={`${styles.badge} ${isGold ? styles.badgeGold : ''}`}>{plan.badge}</div>
+                <div
+                  className={`${styles.badge} ${isSilver ? styles.badgeSilver : ''} ${isGold ? styles.badgeGold : ''}`}
+                >
+                  {plan.badge}
+                </div>
+
                 <h2 className={styles.planName}>{plan.name}</h2>
-                <div className={styles.priceRow}>
-                  <span className={styles.price}>{plan.price}</span>
-                  <span className={styles.period}>{plan.period}</span>
+
+                <div className={styles.priceBlock}>
+                  {priceData.old && <div className={styles.oldPrice}>{priceData.old}</div>}
+                  <div className={styles.priceRow}>
+                    <span className={styles.price}>{priceData.current}</span>
+                    <span className={styles.period}>{priceData.period}</span>
+                  </div>
                 </div>
               </div>
 
@@ -152,7 +198,7 @@ export default function Subscribe() {
               </ul>
 
               <button
-                className={`${styles.cta} ${isCurrent ? styles.currentBtn : ''} ${isGold ? styles.goldBtn : ''}`}
+                className={`${styles.cta} ${isCurrent ? styles.currentBtn : ''} ${isSilver ? styles.silverBtn : ''} ${isGold ? styles.goldBtn : ''}`}
                 onClick={() => handlePlanClick(plan.key)}
               >
                 {getButtonText(plan.key)}
@@ -160,58 +206,6 @@ export default function Subscribe() {
             </div>
           );
         })}
-      </div>
-
-      <div className="card" style={{ marginTop: 24 }}>
-        <div className={styles.compareHeader}>
-          <h3 className={styles.compareTitle}>Quick comparison</h3>
-          <p className={styles.compareSub}>Everything you discussed in one place.</p>
-        </div>
-
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Feature</th>
-                <th>Free</th>
-                <th>Silver</th>
-                <th>Gold</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Patients</td>
-                <td>10 max</td>
-                <td>Unlimited</td>
-                <td>Unlimited</td>
-              </tr>
-              <tr>
-                <td>Appointments</td>
-                <td>Yes</td>
-                <td>Yes</td>
-                <td>Yes</td>
-              </tr>
-              <tr>
-                <td>Patient Info</td>
-                <td>Basic</td>
-                <td>Full</td>
-                <td>Full</td>
-              </tr>
-              <tr>
-                <td>Gallery</td>
-                <td>No</td>
-                <td>No</td>
-                <td>Yes</td>
-              </tr>
-              <tr>
-                <td>WhatsApp</td>
-                <td>No</td>
-                <td>No</td>
-                <td>Yes</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );
