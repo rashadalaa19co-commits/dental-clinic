@@ -21,7 +21,7 @@ const PLANS = [
   {
     key: 'silver',
     name: 'Silver',
-    badge: 'Popular Choice',
+    badge: 'Value',
     features: [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
@@ -34,7 +34,7 @@ const PLANS = [
   {
     key: 'gold',
     name: 'Gold',
-    badge: 'Most Complete',
+    badge: 'Popular Choice',
     features: [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
@@ -83,13 +83,13 @@ export default function Subscribe() {
 
     if (planKey === 'silver') {
       if (billing === 'monthly') return { current: '99 EGP', old: null, period: '/ month' };
-      if (billing === 'semi') return { current: '500 EGP', old: '600 EGP', period: '/ 6 months' };
-      return { current: '800 EGP', old: '1200 EGP', period: '/ year' };
+      if (billing === 'semi') return { current: '299 EGP', old: '600 EGP', period: '/ 6 months' };
+      return { current: '365 EGP 🔥', old: '1200 EGP', period: '/ year' };
     }
 
     if (billing === 'monthly') return { current: '199 EGP', old: null, period: '/ month' };
-    if (billing === 'semi') return { current: '800 EGP', old: '1200 EGP', period: '/ 6 months' };
-    return { current: '1600 EGP', old: '2400 EGP', period: '/ year' };
+    if (billing === 'semi') return { current: '799 EGP', old: '1200 EGP', period: '/ 6 months' };
+    return { current: '1599 EGP', old: '2400 EGP', period: '/ year' };
   };
 
   const getButtonText = (planKey) => {
