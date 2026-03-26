@@ -356,7 +356,7 @@ export default function Analysis() {
         <div>
           <div className={styles.eyebrow}>Smart analytics</div>
           <h1 className={styles.title}>Analysis</h1>
-          <p className={styles.sub}>A competitive dashboard that makes every clinic want a higher score.</p>
+          <p className={styles.sub}>A competitive dashboard.</p>
         </div>
         <div className={styles.headerPill}>{analytics.level}</div>
       </div>
