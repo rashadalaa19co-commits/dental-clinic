@@ -276,14 +276,14 @@
 }
 
 .apptCard {
-  display: grid;
-  grid-template-columns: 54px 82px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 12px;
+  transition: border-color 0.2s;
 }
 
 .apptCard:hover,
@@ -311,10 +311,10 @@
 }
 
 .apptNum {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 18px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
   line-height: 1;
-  font-family: 'Syne', sans-serif;
 }
 
 .apptTimeWrap {
@@ -322,11 +322,15 @@
 }
 
 .apptTime {
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent);
-  font-family: 'Syne', sans-serif;
-  line-height: 1;
+  min-width: 38px;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap;
 }
 
 .apptInfo {
@@ -334,11 +338,11 @@
 }
 
 .apptName {
-  font-size: 15px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .apptMeta {
@@ -634,9 +638,11 @@
   }
 
   .statusSelect {
-    flex: 1;
-    min-width: 0;
-  }
+  padding: 4px 6px;
+  font-size: 11px;
+  border-radius: 6px;
+  min-width: 75px;
+}
 
   .panelAction {
     font-size: 12px;
@@ -700,4 +706,12 @@
   .tab {
     white-space: nowrap;
   }
+}
+
+
+.ampm {
+  font-size: 10px;
+  opacity: 0.7;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
 }
