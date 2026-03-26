@@ -50,7 +50,8 @@
   padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.04);
 }
 .mainGrid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:16px; }
-.bottomGrid { display:grid; grid-template-columns: 1.05fr .95fr; gap:16px; }
+.bottomGrid { display:grid; grid-template-columns: 1fr; gap:16px; }
+.progressSection { display:block; }
 .chartCard, .insightsCard, .titlesCard { animation: fadeUp .65s ease; }
 .cardHead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
 .cardHead h3 { font-size: 20px; margin-bottom:6px; }
@@ -130,6 +131,9 @@
   display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:14px 16px; text-align:left;
 }
+.titleRow > div:first-child { min-width: 0; }
+.titleRow > div:first-child strong, .titleRight strong { word-break: break-word; }
+.titleRow > div:first-child span, .titleRight span { line-height: 1.45; }
 .titleRow strong { display:block; font-size:15px; }
 .titleRow span { color: var(--muted); font-size:12px; }
 .titleRight {
@@ -166,8 +170,43 @@
   .mainGrid, .bottomGrid, .hero { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
+  .page { gap: 16px; }
+  .hero { padding: 18px; }
+  .scoreCard { padding: 16px; }
   .mainGrid { grid-template-columns: 1fr; }
   .barChart { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
-  .titleRow, .levelRow { grid-template-columns: 1fr; }
-  .titleRight > div { text-align:left; }
+  .cardHead { margin-bottom: 12px; }
+  .cardHead h3 { font-size: 18px; }
+  .titleRow {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 14px;
+  }
+  .titleRight {
+    width: 100%;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .titleRight > div {
+    text-align: left;
+    min-width: 0;
+    flex: 1;
+  }
+  .levelsPanel {
+    padding: 0 10px 10px;
+  }
+  .levelRow {
+    grid-template-columns: 22px 1fr;
+    align-items: start;
+  }
+  .levelHint {
+    grid-column: 2;
+    white-space: normal;
+    margin-top: 2px;
+  }
+  .donutSvg {
+    width: 190px;
+    height: 190px;
+  }
 }
