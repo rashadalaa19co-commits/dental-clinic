@@ -225,7 +225,7 @@ function BarChart({ title, subtitle, data, color = 'var(--accent)' }) {
 }
 
 function TitleCard({ titles }) {
-  const [openKey, setOpenKey] = useState('Endo');
+  const [openKey, setOpenKey] = useState('');
 
   return (
     <div className={`card ${styles.titlesCard}`}>
@@ -522,6 +522,10 @@ export default function Analysis() {
         </div>
       </section>
 
+      <section className={styles.progressSection}>
+        <TitleCard titles={analytics.titles} />
+      </section>
+
       <section className={styles.mainGrid}>
         <DonutChart
           title="Patient Gender Mix"
@@ -585,8 +589,6 @@ export default function Analysis() {
             <p>{analytics.monthlyGrowthTone}</p>
           </div>
         </div>
-
-        <TitleCard titles={analytics.titles} />
       </section>
     </div>
   );
