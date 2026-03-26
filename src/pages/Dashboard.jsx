@@ -106,7 +106,7 @@ Please contact us if you need to reschedule.`;
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
-    <div>
+    <div className="pageEnter">
       {access && !access.isActive && (
         <div
           style={{
