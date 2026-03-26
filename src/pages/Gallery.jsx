@@ -1,9 +1,16 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Search } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, updatePatient, checkAccess } from '../services/db';
 
 const CLOUD_NAME = 'dvpbbawh2';
 const UPLOAD_PRESET = 'ntjnefxv';
+
+const getPatientInitials = (name = '') => {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  if (!parts.length) return '?';
+  return parts.map((part) => part[0]?.toUpperCase()).join('');
+};
 
 export default function Gallery() {
   const { user } = useAuth();
@@ -11,8 +18,9 @@ export default function Gallery() {
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showAllPatients, setShowAllPatients] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
   const fileRef = useRef(null);
@@ -21,7 +29,10 @@ export default function Gallery() {
   useEffect(() => {
     if (!user) return;
     Promise.all([getPatients(user.uid), checkAccess(user.uid)])
-      .then(([p, acc]) => { setPatients(p); setAccess(acc); })
+      .then(([p, acc]) => {
+        setPatients(p);
+        setAccess(acc);
+      })
       .finally(() => setLoading(false));
   }, [user]);
 
@@ -30,14 +41,14 @@ export default function Gallery() {
     formData.append('file', file);
     formData.append('upload_preset', UPLOAD_PRESET);
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-      method: 'POST', body: formData
+      method: 'POST', body: formData,
     });
     const data = await res.json();
     return data.secure_url;
   };
 
   const handleUpload = async (e, patient) => {
-    const files = Array.from(e.target.files);
+    const files = Array.from(e.target.files || []);
     if (!files.length) return;
     setUploadingId(patient.id);
     try {
@@ -48,7 +59,7 @@ export default function Gallery() {
       const refreshed = await getPatients(user.uid);
       setPatients(refreshed);
       if (selectedPatient?.id === patient.id) {
-        setSelectedPatient(refreshed.find(p => p.id === patient.id));
+        setSelectedPatient(refreshed.find((p) => p.id === patient.id));
       }
     } finally {
       setUploadingId(null);
@@ -64,40 +75,92 @@ export default function Gallery() {
     const refreshed = await getPatients(user.uid);
     setPatients(refreshed);
     if (selectedPatient?.id === patient.id) {
-      setSelectedPatient(refreshed.find(p => p.id === patient.id) || null);
+      setSelectedPatient(refreshed.find((p) => p.id === patient.id) || null);
     }
   };
 
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'60vh',color:'var(--muted)'}}>Loading...</div>;
+  const searchValue = search.trim().toLowerCase();
 
-  // Locked screen
+  const suggestions = useMemo(() => {
+    if (!searchValue) return [];
+
+    return patients
+      .filter((p) => {
+        const haystack = [p.name, p.phone, p.status, p.procedure, p.alert, p.patientType]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(searchValue);
+      })
+      .slice(0, 5);
+  }, [patients, searchValue]);
+
+  const matchesSearch = (patient) => {
+    if (!searchValue) return true;
+    return [
+      patient.name,
+      patient.phone,
+      patient.status,
+      patient.procedure,
+      patient.alert,
+      patient.patientType,
+    ]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(searchValue));
+  };
+
+  const patientsWithPhotos = patients.filter((p) => (p.photos || []).length > 0);
+  const filteredPatientsWithPhotos = patientsWithPhotos.filter(matchesSearch);
+  const allPatients = patients.filter(matchesSearch);
+  const totalPhotos = patientsWithPhotos.reduce((a, p) => a + (p.photos || []).length, 0);
+
+  const openPatient = (patient) => {
+    setShowSuggestions(false);
+    setSearch(patient.name || '');
+    setSelectedPatient(patient);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>
+        Loading...
+      </div>
+    );
+  }
+
   if (!access?.hasGallery) {
     return (
-      <div className="motionPage motionHero" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh',gap:16,textAlign:'center',padding:'20px'}}>
-        <div style={{fontSize:64}}>📸</div>
-        <div style={{fontSize:28,fontWeight:800,background:'linear-gradient(135deg,#f59e0b,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
+      <div className="motionPage motionHero" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: 16, textAlign: 'center', padding: '20px' }}>
+        <div style={{ fontSize: 64 }}>📸</div>
+        <div style={{ fontSize: 28, fontWeight: 800, background: 'linear-gradient(135deg,#f59e0b,#f97316)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
           Gold Plan Feature
         </div>
-        <p style={{color:'var(--muted)',fontSize:15,maxWidth:400}}>
+        <p style={{ color: 'var(--muted)', fontSize: 15, maxWidth: 400 }}>
           Upgrade to Gold to unlock the Gallery and upload unlimited patient photos!
         </p>
-        <div style={{background:'var(--surface)',border:'1px solid rgba(245,158,11,0.3)',borderRadius:16,padding:'24px 32px',maxWidth:380,width:'100%'}}>
-          <div style={{fontSize:18,fontWeight:700,marginBottom:4}}>🥇 Gold Plan</div>
-          <div style={{fontSize:28,fontWeight:800,color:'#f59e0b',marginBottom:4}}>150 EGP<span style={{fontSize:14,color:'var(--muted)'}}>/month</span></div>
-          <div style={{fontSize:13,color:'var(--muted)',marginBottom:20}}>Unlimited patients + Gallery + Photos</div>
-          <div style={{display:'flex',flexDirection:'column',gap:10}}>
-            <a href="https://wa.me/201010562664" target="_blank"
-              style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'12px',background:'#25D366',color:'white',borderRadius:10,textDecoration:'none',fontWeight:600,fontSize:14}}>
+        <div style={{ background: 'var(--surface)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 16, padding: '24px 32px', maxWidth: 380, width: '100%' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>🥇 Gold Plan</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#f59e0b', marginBottom: 4 }}>
+            150 EGP<span style={{ fontSize: 14, color: 'var(--muted)' }}>/month</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>Unlimited patients + Gallery + Photos</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <a
+              href="https://wa.me/201010562664"
+              target="_blank"
+              rel="noreferrer"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', background: '#25D366', color: 'white', borderRadius: 10, textDecoration: 'none', fontWeight: 600, fontSize: 14 }}
+            >
               📱 WhatsApp to Subscribe
             </a>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-              <div style={{background:'var(--surface2)',borderRadius:10,padding:'10px',textAlign:'center'}}>
-                <div style={{fontSize:11,color:'var(--muted)'}}>Vodafone Cash</div>
-                <div style={{fontSize:14,fontWeight:600,marginTop:2}}>01010562664</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Vodafone Cash</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>01010562664</div>
               </div>
-              <div style={{background:'var(--surface2)',borderRadius:10,padding:'10px',textAlign:'center'}}>
-                <div style={{fontSize:11,color:'var(--muted)'}}>InstaPay</div>
-                <div style={{fontSize:14,fontWeight:600,marginTop:2}}>01010562664</div>
+              <div style={{ background: 'var(--surface2)', borderRadius: 10, padding: '10px', textAlign: 'center' }}>
+                <div style={{ fontSize: 11, color: 'var(--muted)' }}>InstaPay</div>
+                <div style={{ fontSize: 14, fontWeight: 600, marginTop: 2 }}>01010562664</div>
               </div>
             </div>
           </div>
@@ -106,73 +169,86 @@ export default function Gallery() {
     );
   }
 
-  const patientsWithPhotos = patients.filter(p => (p.photos||[]).length > 0);
-  const allPatients = patients.filter(p =>
-    !search || p.name?.toLowerCase().includes(search.toLowerCase())
-  );
-  const totalPhotos = patientsWithPhotos.reduce((a,p) => a + (p.photos||[]).length, 0);
-
-  // If patient selected — show full view
   if (selectedPatient) {
-    const p = patients.find(x => x.id === selectedPatient.id) || selectedPatient;
+    const p = patients.find((x) => x.id === selectedPatient.id) || selectedPatient;
     return (
       <div className="motionPage">
-        <div className="motionHero" style={{display:'flex',alignItems:'center',gap:14,marginBottom:24,flexWrap:'wrap'}}>
-          <button onClick={()=>setSelectedPatient(null)}
-            style={{padding:'8px 16px',background:'transparent',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:8,fontSize:14,cursor:'pointer'}}>
+        <div className="motionHero" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setSelectedPatient(null)}
+            style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}
+          >
             ← Back
           </button>
-          <div style={{flex:1}}>
-            <h2 style={{fontSize:22,fontWeight:800}}>{p.name}</h2>
-            <p style={{color:'var(--muted)',fontSize:13}}>{(p.photos||[]).length} photos · {p.procedure||'-'}</p>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800 }}>{p.name}</h2>
+            <p style={{ color: 'var(--muted)', fontSize: 13 }}>{(p.photos || []).length} photos · {p.procedure || '-'}</p>
           </div>
-          <input ref={fileRef} type="file" accept="image/*" multiple onChange={e=>handleUpload(e,p)} style={{display:'none'}}/>
-          <button onClick={()=>fileRef.current.click()} disabled={uploadingId===p.id}
-            style={{padding:'9px 20px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',opacity:uploadingId===p.id?0.6:1}}>
-            {uploadingId===p.id ? '⏳ Uploading...' : '📤 Upload Photos'}
+          <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => handleUpload(e, p)} style={{ display: 'none' }} />
+          <button
+            onClick={() => fileRef.current.click()}
+            disabled={uploadingId === p.id}
+            style={{ padding: '9px 20px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.6 : 1 }}
+          >
+            {uploadingId === p.id ? '⏳ Uploading...' : '📤 Upload Photos'}
           </button>
         </div>
 
-        {(p.photos||[]).length === 0 ? (
-          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:'40vh',color:'var(--muted)',gap:12,background:'var(--surface)',borderRadius:12,border:'2px dashed var(--border)'}}>
-            <div style={{fontSize:48}}>📷</div>
-            <p style={{fontSize:16}}>No photos yet</p>
-            <button onClick={()=>fileRef.current.click()}
-              style={{padding:'10px 24px',background:'var(--accent)',color:'#000',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer'}}>
+        {(p.photos || []).length === 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '40vh', color: 'var(--muted)', gap: 12, background: 'var(--surface)', borderRadius: 12, border: '2px dashed var(--border)' }}>
+            <div style={{ fontSize: 48 }}>📷</div>
+            <p style={{ fontSize: 16 }}>No photos yet</p>
+            <button
+              onClick={() => fileRef.current.click()}
+              style={{ padding: '10px 24px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+            >
               Upload First Photo
             </button>
           </div>
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))',gap:14}}>
-            {(p.photos||[]).map((url,i) => (
-              <div key={i} style={{position:'relative',borderRadius:12,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1',cursor:'pointer',background:'var(--surface2)'}}
-                onClick={()=>setLightbox({url,patient:p,idx:i})}>
-                <img src={url} alt={'Photo '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0)',transition:'background 0.2s'}}
-                  onMouseEnter={e=>e.currentTarget.style.background='rgba(0,0,0,0.3)'}
-                  onMouseLeave={e=>e.currentTarget.style.background='rgba(0,0,0,0)'}/>
-                <button onClick={e=>{e.stopPropagation();handleDeletePhoto(p,i);}}
-                  style={{position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.7)',color:'white',border:'none',borderRadius:'50%',width:28,height:28,fontSize:13,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+            {(p.photos || []).map((url, i) => (
+              <div
+                key={i}
+                style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '1', cursor: 'pointer', background: 'var(--surface2)' }}
+                onClick={() => setLightbox({ url, patient: p, idx: i })}
+              >
+                <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <div
+                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)', transition: 'background 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.3)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; }}
+                />
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleDeletePhoto(p, i); }}
+                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
                   X
                 </button>
               </div>
             ))}
-            <div onClick={()=>fileRef.current.click()}
-              style={{borderRadius:12,border:'2px dashed var(--border)',aspectRatio:'1',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'var(--muted)',gap:8,transition:'all 0.2s'}}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--accent)';e.currentTarget.style.color='var(--accent)';}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--muted)';}}>
-              <div style={{fontSize:32}}>+</div>
-              <div style={{fontSize:13}}>Add Photo</div>
+            <div
+              onClick={() => fileRef.current.click()}
+              style={{ borderRadius: 12, border: '2px dashed var(--border)', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', gap: 8, transition: 'all 0.2s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)'; }}
+            >
+              <div style={{ fontSize: 32 }}>+</div>
+              <div style={{ fontSize: 13 }}>Add Photo</div>
             </div>
           </div>
         )}
 
         {lightbox && (
-          <div onClick={()=>setLightbox(null)}
-            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:20}}>
-            <img src={lightbox.url} alt="" style={{maxWidth:'90vw',maxHeight:'90vh',objectFit:'contain',borderRadius:8}}/>
-            <button onClick={()=>setLightbox(null)}
-              style={{position:'absolute',top:20,right:20,background:'rgba(255,255,255,0.15)',color:'white',border:'none',borderRadius:'50%',width:44,height:44,fontSize:22,cursor:'pointer'}}>
+          <div
+            onClick={() => setLightbox(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
+          >
+            <img src={lightbox.url} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }} />
+            <button
+              onClick={() => setLightbox(null)}
+              style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '50%', width: 44, height: 44, fontSize: 22, cursor: 'pointer' }}
+            >
               X
             </button>
           </div>
@@ -181,52 +257,125 @@ export default function Gallery() {
     );
   }
 
-  // Main gallery grid view
   return (
-    <div>
-      {/* Header */}
-      <div className="motionHero" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+    <div className="motionPage">
+      <div className="motionHero" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{fontSize:26,fontWeight:800}}>📸 Gallery</h1>
-          <p style={{color:'var(--muted)',fontSize:14,marginTop:4}}>
+          <h1 style={{ fontSize: 26, fontWeight: 800 }}>📸 Gallery</h1>
+          <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>
             {patientsWithPhotos.length} patients · {totalPhotos} photos
           </p>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="motionCard motionCardDelay1" style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 16px',marginBottom:24,maxWidth:360}}>
-        <span style={{color:'var(--muted)',fontSize:16}}>🔍</span>
-        <input value={search} onChange={e=>setSearch(e.target.value)}
-          placeholder="Search patients..."
-          style={{border:'none',background:'transparent',color:'var(--text)',outline:'none',fontSize:14,width:'100%'}}/>
+      <div className="motionCard motionCardDelay1" style={{ marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
+        <div style={{ position: 'relative', maxWidth: 430 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px' }}>
+            <Search size={17} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+            <input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
+              placeholder="Search by name, phone, procedure, status..."
+              style={{ border: 'none', background: 'transparent', color: 'var(--text)', outline: 'none', fontSize: 14, width: '100%', height: 52 }}
+            />
+          </div>
+
+          {showSuggestions && suggestions.length > 0 && (
+            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', zIndex: 20, boxShadow: '0 18px 45px rgba(0,0,0,0.22)' }}>
+              {suggestions.map((p, index) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onMouseDown={() => openPatient(p)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', borderBottom: index === suggestions.length - 1 ? 'none' : '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}
+                >
+                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,212,255,0.14)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                    {getPatientInitials(p.name)}
+                  </span>
+                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</strong>
+                    <small style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {p.phone || 'No phone'} · {p.status || 'No status'}
+                    </small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Patients with photos */}
-      {patientsWithPhotos.length > 0 && !search && (
-        <div style={{marginBottom:32}}>
-          <h3 style={{fontSize:13,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:14}}>
+      {filteredPatientsWithPhotos.length > 0 && !searchValue && (
+        <div style={{ marginBottom: 32 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>
             📷 Patients with Photos
           </h3>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))',gap:16}}>
-            {patientsWithPhotos.map(p => (
-              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs}/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {filteredPatientsWithPhotos.map((p) => (
+              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} />
             ))}
           </div>
         </div>
       )}
 
-      {/* All patients (search results or all) */}
       <div>
-        <h3 style={{fontSize:13,fontWeight:600,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:14}}>
-          {search ? `Search results (${allPatients.length})` : '👥 All Patients'}
-        </h3>
-        {allPatients.length === 0 ? (
-          <p style={{color:'var(--muted)',textAlign:'center',padding:40}}>No patients found</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
+          <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+            {searchValue ? `Search results (${allPatients.length})` : '👥 All Patients'}
+          </h3>
+
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--text)', fontSize: 13, fontWeight: 600, userSelect: 'none', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={showAllPatients}
+              onChange={(e) => setShowAllPatients(e.target.checked)}
+              style={{ display: 'none' }}
+            />
+            <span
+              style={{
+                width: 46,
+                height: 26,
+                borderRadius: 999,
+                background: showAllPatients ? 'rgba(0,212,255,0.28)' : 'rgba(255,255,255,0.09)',
+                border: `1px solid ${showAllPatients ? 'rgba(0,212,255,0.45)' : 'var(--border)'}`,
+                position: 'relative',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+            >
+              <span
+                style={{
+                  position: 'absolute',
+                  top: 2,
+                  left: showAllPatients ? 22 : 2,
+                  width: 20,
+                  height: 20,
+                  borderRadius: '50%',
+                  background: showAllPatients ? 'var(--accent)' : 'rgba(255,255,255,0.75)',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.25)',
+                }}
+              />
+            </span>
+            <span>{showAllPatients ? 'Show all patients' : 'Hide all patients'}</span>
+          </label>
+        </div>
+
+        {!searchValue && !showAllPatients ? (
+          <div className="motionCard motionCardDelay2" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '26px 20px', color: 'var(--muted)', textAlign: 'center' }}>
+            All patients are hidden by default to keep the gallery cleaner.
+          </div>
+        ) : allPatients.length === 0 ? (
+          <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>No patients found</p>
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))',gap:16}}>
-            {allPatients.map(p => (
-              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs}/>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
+            {allPatients.map((p) => (
+              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} />
             ))}
           </div>
         )}
@@ -237,27 +386,28 @@ export default function Gallery() {
 
 function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
   const photos = p.photos || [];
-  return (
-    <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:14,overflow:'hidden',transition:'border-color 0.2s,transform 0.2s',cursor:'pointer'}}
-      onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(0,212,255,0.4)';e.currentTarget.style.transform='translateY(-2px)';}}
-      onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.transform='translateY(0)';}}>
 
-      {/* Photo preview grid */}
-      <div onClick={()=>onSelect(p)} style={{aspectRatio:'16/9',background:'var(--surface2)',position:'relative',overflow:'hidden'}}>
+  return (
+    <div
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s,transform 0.2s', cursor: 'pointer' }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,255,0.4)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+    >
+      <div onClick={() => onSelect(p)} style={{ aspectRatio: '16/9', background: 'var(--surface2)', position: 'relative', overflow: 'hidden' }}>
         {photos.length === 0 ? (
-          <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',flexDirection:'column',gap:8,color:'var(--muted)'}}>
-            <div style={{fontSize:32}}>📷</div>
-            <div style={{fontSize:12}}>No photos</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 8, color: 'var(--muted)' }}>
+            <div style={{ fontSize: 32 }}>📷</div>
+            <div style={{ fontSize: 12 }}>No photos</div>
           </div>
         ) : photos.length === 1 ? (
-          <img src={photos[0]} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',height:'100%',gap:1}}>
-            {photos.slice(0,4).map((url,i) => (
-              <div key={i} style={{overflow:'hidden',position:'relative'}}>
-                <img src={url} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', gap: 1 }}>
+            {photos.slice(0, 4).map((url, i) => (
+              <div key={i} style={{ overflow: 'hidden', position: 'relative' }}>
+                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 {i === 3 && photos.length > 4 && (
-                  <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,0.6)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontSize:18,fontWeight:700}}>
+                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18, fontWeight: 700 }}>
                     +{photos.length - 4}
                   </div>
                 )}
@@ -267,23 +417,32 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
         )}
       </div>
 
-      {/* Patient info + upload button */}
-      <div style={{padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
-        <div style={{width:34,height:34,borderRadius:'50%',background:'rgba(0,212,255,0.15)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:14,flexShrink:0}}>
-          {p.name?.[0]?.toUpperCase()}
+      <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,212,255,0.15)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+          {getPatientInitials(p.name)}
         </div>
-        <div style={{flex:1,minWidth:0}} onClick={()=>onSelect(p)}>
-          <div style={{fontSize:14,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</div>
-          <div style={{fontSize:12,color:'var(--muted)'}}>{photos.length} photo{photos.length!==1?'s':''} · {p.procedure||'-'}</div>
+        <div style={{ flex: 1, minWidth: 0 }} onClick={() => onSelect(p)}>
+          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{photos.length} photo{photos.length !== 1 ? 's' : ''} · {p.procedure || '-'}</div>
         </div>
         <div>
-          <input type="file" accept="image/*" multiple
-            ref={el => fileRefs.current[p.id] = el}
-            onChange={e=>onUpload(e,p)} style={{display:'none'}}/>
-          <button onClick={e=>{e.stopPropagation();fileRefs.current[p.id]?.click();}}
-            disabled={uploadingId===p.id}
-            style={{padding:'5px 10px',background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,fontSize:12,fontWeight:600,cursor:'pointer',opacity:uploadingId===p.id?0.5:1,whiteSpace:'nowrap'}}>
-            {uploadingId===p.id ? '⏳' : '📤'}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            ref={(el) => { fileRefs.current[p.id] = el; }}
+            onChange={(e) => onUpload(e, p)}
+            style={{ display: 'none' }}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              fileRefs.current[p.id]?.click();
+            }}
+            disabled={uploadingId === p.id}
+            style={{ padding: '5px 10px', background: 'rgba(0,212,255,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,212,255,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
+          >
+            {uploadingId === p.id ? '⏳' : '📤'}
           </button>
         </div>
       </div>
