@@ -20,7 +20,7 @@ export default function Layout() {
         <div className={styles.logo}>
           <span className={styles.logoIcon}>🦷</span>
           <div>
-            <div className={styles.logoName}>DentaCare</div>
+            <div className={styles.logoName}>AuraDent</div>
             <div className={styles.logoPro}>Pro</div>
           </div>
         </div>
