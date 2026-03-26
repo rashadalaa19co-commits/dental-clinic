@@ -139,12 +139,12 @@ export default function Admin() {
   const free = users.filter(u => !u.isActive).length;
 
   return (
-    <div className="pageEnter">
-      <h1 style={{fontSize:26,fontWeight:800,marginBottom:4}}>👑 Admin Panel</h1>
+    <div className="motionPage">
+      <h1 className="motionHero" style={{fontSize:26,fontWeight:800,marginBottom:4}}>👑 Admin Panel</h1>
       <p style={{color:'var(--muted)',fontSize:14,marginBottom:24}}>Manage subscriptions</p>
 
       {/* Stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
+      <div className="motionCard motionCardDelay1" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:12,marginBottom:24}}>
         {[
           { label:'Total', value:total, color:'var(--accent)', icon:'👥' },
           { label:'Free', value:free, color:'var(--muted)', icon:'🆓' },
@@ -162,14 +162,14 @@ export default function Admin() {
       </div>
 
       {/* Search */}
-      <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 14px',marginBottom:16,maxWidth:320}}>
+      <div className="motionCard motionCardDelay2" style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 14px',marginBottom:16,maxWidth:320}}>
         <span style={{color:'var(--muted)'}}>🔍</span>
         <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search by name or email..."
           style={{border:'none',background:'transparent',color:'var(--text)',outline:'none',fontSize:14,width:'100%'}}/>
       </div>
 
       {/* Table */}
-      <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'auto'}}>
+      <div className="motionCard motionCardDelay3" style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'auto'}}>
         <table style={{width:'100%',borderCollapse:'collapse',minWidth:1000}}>
           <thead>
             <tr style={{background:'var(--surface2)',fontSize:12,color:'var(--muted)',textTransform:'uppercase',letterSpacing:'0.5px'}}>
