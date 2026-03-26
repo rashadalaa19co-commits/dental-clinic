@@ -239,7 +239,7 @@ export default function PatientForm() {
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
 
   return (
-    <div>
+    <div className="pageEnter">
       <div className={styles.topbar}>
         <div>
           <h1 className={styles.title}>{isEdit ? 'Edit Patient' : 'New Patient'}</h1>
