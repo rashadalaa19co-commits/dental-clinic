@@ -650,7 +650,30 @@
 }
 
 @media (max-width: 560px) {
-  .summaryGrid,
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .summaryCard {
+    padding: 14px;
+  }
+
+  .summaryCard strong {
+    font-size: 22px;
+    margin-bottom: 6px;
+  }
+
+  .summaryLabel {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
+  .summaryCard p {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
   .formGrid,
   .filterRow {
     grid-template-columns: 1fr;
