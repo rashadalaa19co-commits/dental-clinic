@@ -652,7 +652,6 @@
     flex-direction: column;
   }
 
-  .heroStats,
   .focusGrid,
   .toolGrid,
   .statsGrid {
@@ -671,5 +670,64 @@
 
   .title {
     font-size: 32px;
+  }
+}
+
+
+.heroStatCompact {
+  min-height: 118px;
+}
+
+@media (max-width: 640px) {
+  .topShell {
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .todayPanel {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .todayActions,
+  .quickActionsCompact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .primaryAction,
+  .secondaryAction,
+  .ghostAction {
+    width: 100%;
+    justify-content: center;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .heroStats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .heroStatCard,
+  .heroStatCompact {
+    min-height: 96px;
+    padding: 12px;
+    gap: 6px;
+    border-radius: 14px;
+  }
+
+  .heroStatCard strong {
+    font-size: 24px;
+  }
+
+  .heroStatCard small {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .heroSide {
+    gap: 10px;
   }
 }
