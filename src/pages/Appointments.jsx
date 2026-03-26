@@ -1,74 +1,57 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { checkAccess, getAppointments, addAppointment, updateAppointment, deleteAppointment, getPatients } from '../services/db';
-import { format, isToday, isTomorrow, parseISO, isAfter, startOfDay, differenceInMinutes, compareAsc, addDays } from 'date-fns';
+import { getAppointments, addAppointment, updateAppointment, deleteAppointment, getPatients } from '../services/db';
+import { format, isToday, isTomorrow, parseISO, isAfter, startOfDay, differenceInMinutes } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import styles from './Appointments.module.css';
 
-const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Done', 'Cancelled', 'No Show'];
-const TYPE_OPTIONS = ['Endo', 'Operative', 'Surgery', 'Proth', 'Scaling', 'Consultation', 'Follow Up', 'Other'];
+const STATUS_OPTIONS = ['Scheduled','Confirmed','Done','Cancelled','No Show'];
 
-const normalizePhone = (phone = '') => {
-  const digits = String(phone).replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('20')) return digits;
-  if (digits.startsWith('0')) return `20${digits.slice(1)}`;
-  return digits;
-};
-
-function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, onWhatsApp, patientQuery, setPatientQuery }) {
+function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, STATUS_OPTIONS }) {
   const [open, setOpen] = useState(false);
-  const upcoming = pf.appts.filter((a) => a.datetime && isAfter(parseISO(a.datetime), new Date())).length;
+  const upcoming = pf.appts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date())).length;
   const past = pf.appts.length - upcoming;
-
   return (
-    <div className={styles.folderCard}>
-      <div onClick={() => setOpen((o) => !o)} className={styles.folderHead}>
-        <div className={styles.folderAvatar}>{pf.name?.[0]?.toUpperCase() || '?'}</div>
-        <div className={styles.folderInfo}>
-          <div className={styles.folderName}>{pf.name}</div>
-          <div className={styles.folderMeta}>{past} past · {upcoming} upcoming</div>
+    <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,marginBottom:10,overflow:'hidden'}}>
+      <div onClick={() => setOpen(o => !o)} style={{display:'flex',alignItems:'center',gap:12,padding:'14px 16px',cursor:'pointer'}}>
+        <div style={{width:40,height:40,borderRadius:'50%',background:'rgba(0,212,255,0.15)',color:'var(--accent)',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,fontSize:16,flexShrink:0}}>
+          {pf.name?.[0]?.toUpperCase()}
         </div>
-        <div className={styles.folderActions}>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontWeight:600,fontSize:14,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{pf.name}</div>
+          <div style={{fontSize:12,color:'var(--muted)',marginTop:2}}>{past} past · {upcoming} upcoming</div>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:8,flexShrink:0}}>
           {pf.id && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                nav(`/patients/${pf.id}`);
-              }}
-              className={styles.profileBtn}
-            >
+            <button onClick={e=>{e.stopPropagation();nav(`/patients/${pf.id}`);}}
+              style={{padding:'4px 10px',background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,fontSize:12,cursor:'pointer'}}>
               Profile
             </button>
           )}
-          <span className={styles.folderChevron}>{open ? '▲' : '▼'}</span>
+          <span style={{color:'var(--muted)',fontSize:16}}>{open?'▲':'▼'}</span>
         </div>
       </div>
-
       {open && (
-        <div className={styles.folderBody}>
-          {pf.appts
-            .slice()
-            .sort((a, b) => (b.datetime || '').localeCompare(a.datetime || ''))
-            .map((a, i) => {
-              const d = a.datetime ? parseISO(a.datetime) : null;
-              const isPast = d && !isAfter(d, new Date());
-              return (
-                <div key={a.id || i} className={styles.folderItem}>
-                  <div className={`${styles.folderDot} ${isPast ? styles.folderDotPast : styles.folderDotUpcoming}`}></div>
-                  <div className={styles.folderItemInfo}>
-                    <div className={styles.folderItemDate}>{d ? format(d, 'd MMM · hh:mm a') : '--'}</div>
-                    <div className={styles.folderItemMeta}>{a.type || '-'} {a.notes ? `· ${a.notes}` : ''}</div>
-                  </div>
-                  <select value={a.status || 'Scheduled'} onChange={(e) => onStatus(a.id, e.target.value)} className={styles.inlineSelect}>
-                    {STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                  </select>
-                  <button onClick={() => onEdit(a)} className={styles.inlineIconBtn}>✏️</button>
-                  <button onClick={() => onWhatsApp(a)} className={styles.inlineIconBtn}>💬</button>
-                  <button onClick={() => onDelete(a.id)} className={styles.inlineDangerBtn}>🗑️</button>
+        <div style={{borderTop:'1px solid var(--border)',padding:'8px 16px 12px'}}>
+          {pf.appts.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||'')).map((a,i) => {
+            const d = a.datetime ? parseISO(a.datetime) : null;
+            const isPast = d && !isAfter(d, new Date());
+            return (
+             <div key={a.id||i} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
+                <div style={{width:8,height:8,borderRadius:'50%',background:isPast?'var(--muted)':'var(--success)',flexShrink:0}}></div>
+                <div style={{flex:1,minWidth:120}}>
+  <div style={{fontSize:13,fontWeight:600}}>{d?format(d,"d MMM · hh:mm a"):'--'}</div>
+                  <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes?'· '+a.notes:''}</div>
                 </div>
-              );
-            })}
+                <select value={a.status||'Scheduled'} onChange={e=>onStatus(a.id,e.target.value)}
+                  style={{padding:'4px 6px',fontSize:11,borderRadius:6,minWidth:85}}>
+                  {STATUS_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                </select>
+                <button onClick={()=>onEdit(a)} style={{background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'none',borderRadius:6,padding:'4px 8px',fontSize:11,cursor:'pointer'}}>✏️</button>
+                <button onClick={()=>onDelete(a.id)} style={{background:'rgba(248,81,73,0.1)',color:'var(--danger)',border:'none',borderRadius:6,padding:'4px 8px',fontSize:11,cursor:'pointer'}}>🗑️</button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -80,43 +63,25 @@ export default function Appointments() {
   const nav = useNavigate();
   const [appts, setAppts] = useState([]);
   const [patients, setPatients] = useState([]);
-  const [access, setAccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null);
-  const [form, setForm] = useState({ patientName: '', patientId: '', datetime: '', type: '', status: 'Scheduled', notes: '' });
+  const [form, setForm] = useState({ patientName:'', patientId:'', datetime:'', type:'', status:'Scheduled', notes:'' });
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('upcoming');
   const [conflict, setConflict] = useState(null);
   const [mobileView, setMobileView] = useState('timeline');
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [patientQuery, setPatientQuery] = useState('');
 
   const load = () =>
-    Promise.all([getAppointments(user.uid), getPatients(user.uid), checkAccess(user.uid, user)]).then(([a, p, acc]) => {
-      setAppts(a);
-      setPatients(p);
-      setAccess(acc);
-    });
+    Promise.all([getAppointments(user.uid), getPatients(user.uid)])
+      .then(([a, p]) => { setAppts(a); setPatients(p); });
 
-  useEffect(() => {
-    if (user) load();
-  }, [user]);
+  useEffect(() => { if (user) load(); }, [user]);
 
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const patientsMap = useMemo(() => {
-    const map = new Map();
-    patients.forEach((p) => {
-      if (p.id) map.set(p.id, p);
-    });
-    return map;
-  }, [patients]);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const selectPatient = (pid) => {
-    const p = patients.find((x) => x.id === pid);
-    setForm((f) => ({ ...f, patientId: pid, patientName: p?.name || '' }));
+    const p = patients.find(x => x.id === pid);
+    setForm(f => ({ ...f, patientId: pid, patientName: p?.name || '' }));
   };
 
   const checkConflict = (datetime) => {
@@ -127,7 +92,7 @@ export default function Appointments() {
       if (!appt.datetime) continue;
       const existing = parseISO(appt.datetime);
       const diff = Math.abs(differenceInMinutes(newTime, existing));
-      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'hh:mm a'), diff };
+      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'HH:mm'), diff };
     }
     return null;
   };
@@ -150,14 +115,7 @@ export default function Appointments() {
 
   const handleEdit = (appt) => {
     setEditingAppt(appt);
-    setForm({
-      patientName: appt.patientName,
-      patientId: appt.patientId || '',
-      datetime: appt.datetime,
-      type: appt.type || '',
-      status: appt.status || 'Scheduled',
-      notes: appt.notes || '',
-    });
+    setForm({ patientName:appt.patientName, patientId:appt.patientId||'', datetime:appt.datetime, type:appt.type||'', status:appt.status||'Scheduled', notes:appt.notes||'' });
     setShowForm(true);
     setConflict(null);
   };
@@ -174,109 +132,34 @@ export default function Appointments() {
   };
 
   const cancelForm = () => {
-    setShowForm(false);
-    setEditingAppt(null);
-    setConflict(null);
-    setForm({ patientName: '', patientId: '', datetime: '', type: '', status: 'Scheduled', notes: '' });
-  };
-
-  const getAppointmentPhone = (appt) => {
-    if (appt.phone) return normalizePhone(appt.phone);
-    if (appt.patientId && patientsMap.has(appt.patientId)) return normalizePhone(patientsMap.get(appt.patientId)?.phone || '');
-    const matchedPatient = patients.find((p) => p.name?.trim()?.toLowerCase() === appt.patientName?.trim()?.toLowerCase());
-    return normalizePhone(matchedPatient?.phone || '');
-  };
-
-  const buildWhatsAppMessage = (appt) => {
-    const time = appt.datetime ? format(parseISO(appt.datetime), 'hh:mm a') : '--';
-    const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
-    return `Hello ${appt.patientName || ''},\nThis is a reminder of your appointment at AuraDent.\nDate: ${date}\nTime: ${time}\nType: ${appt.type || 'Dental appointment'}\n\nPlease contact us if you need to reschedule.`;
-  };
-
-  const ensureGoldWhatsApp = () => {
-    if (access?.plan === 'gold') return true;
-    alert('WhatsApp reminders are a Gold feature. Please upgrade your plan to use WhatsApp.');
-    return false;
-  };
-
-  const sendWhatsApp = (appt) => {
-    if (!ensureGoldWhatsApp()) return;
-    const phone = getAppointmentPhone(appt);
-    if (!phone) {
-      alert(`No phone number found for ${appt.patientName || 'this patient'}`);
-      return;
-    }
-    const message = buildWhatsAppMessage(appt);
-    const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  const sendTodayReminders = () => {
-    if (!ensureGoldWhatsApp()) return;
-    if (!todayAppts.length) {
-      alert('No appointments scheduled for today');
-      return;
-    }
-    const firstWithPhone = todayAppts.find((appt) => getAppointmentPhone(appt));
-    if (!firstWithPhone) {
-      alert("No phone numbers found for today's appointments");
-      return;
-    }
-    sendWhatsApp(firstWithPhone);
+    setShowForm(false); setEditingAppt(null); setConflict(null);
+    setForm({ patientName:'', patientId:'', datetime:'', type:'', status:'Scheduled', notes:'' });
   };
 
   const now = new Date();
-  const nextWeek = addDays(now, 7);
   const patientAppts = {};
-  appts.forEach((a) => {
+  appts.forEach(a => {
     const key = a.patientId || a.patientName;
     if (!patientAppts[key]) patientAppts[key] = { name: a.patientName, id: a.patientId, appts: [] };
     patientAppts[key].appts.push(a);
   });
 
-  const todayAppts = useMemo(
-    () => appts.filter((a) => a.datetime && isToday(parseISO(a.datetime))).sort((a, b) => compareAsc(parseISO(a.datetime), parseISO(b.datetime))),
-    [appts]
-  );
-
-  const summary = useMemo(() => {
-    const upcoming = appts.filter((a) => a.datetime && isAfter(parseISO(a.datetime), startOfDay(now))).length;
-    const thisWeek = appts.filter((a) => a.datetime && isAfter(parseISO(a.datetime), startOfDay(now)) && parseISO(a.datetime) <= nextWeek).length;
-    const needsReminder = appts.filter((a) => {
-      if (!a.datetime) return false;
-      const date = parseISO(a.datetime);
-      return (isToday(date) || isTomorrow(date)) && ['Scheduled', 'Confirmed'].includes(a.status || 'Scheduled');
-    }).length;
-    const missed = appts.filter((a) => a.datetime && parseISO(a.datetime) < now && ['Scheduled', 'Confirmed'].includes(a.status || 'Scheduled')).length;
-    return { upcoming, thisWeek, needsReminder, missed };
-  }, [appts]);
-
-  const filtered = appts.filter((a) => {
-    if (!a.datetime && filter !== 'all') return false;
-    const d = a.datetime ? parseISO(a.datetime) : null;
-    if (filter === 'today' && d && !isToday(d)) return false;
-    if (filter === 'upcoming' && d && !isAfter(d, startOfDay(now))) return false;
-    if (filter === 'past' && d && isAfter(d, startOfDay(now))) return false;
-    if (filter === 'reminders' && d && !(isToday(d) || isTomorrow(d))) return false;
-    if (filter === 'missed' && d && !(d < now && ['Scheduled', 'Confirmed'].includes(a.status || 'Scheduled'))) return false;
-    if (statusFilter !== 'all' && (a.status || 'Scheduled') !== statusFilter) return false;
-    if (typeFilter !== 'all' && (a.type || 'Other') !== typeFilter) return false;
-    if (query.trim()) {
-      const hay = `${a.patientName || ''} ${a.type || ''} ${a.notes || ''}`.toLowerCase();
-      if (!hay.includes(query.trim().toLowerCase())) return false;
-    }
+  const filtered = appts.filter(a => {
+    if (!a.datetime) return filter === 'all';
+    const d = parseISO(a.datetime);
+    if (filter === 'today') return isToday(d);
+    if (filter === 'upcoming') return isAfter(d, startOfDay(now));
+    if (filter === 'past') return !isAfter(d, startOfDay(now));
     return true;
   });
 
-  const patientFolders = Object.values(patientAppts)
-    .filter((pf) => pf.name?.toLowerCase().includes(patientQuery.trim().toLowerCase()))
-    .sort((a, b) => {
-      const lastA = a.appts[a.appts.length - 1]?.datetime || '';
-      const lastB = b.appts[b.appts.length - 1]?.datetime || '';
-      return lastB.localeCompare(lastA);
-    });
+  const patientFolders = Object.values(patientAppts).sort((a,b) => {
+    const lastA = a.appts[a.appts.length-1]?.datetime || '';
+    const lastB = b.appts[b.appts.length-1]?.datetime || '';
+    return lastB.localeCompare(lastA);
+  });
 
-  const todayCount = todayAppts.length;
+  const todayCount = appts.filter(a => a.datetime && isToday(parseISO(a.datetime))).length;
 
   return (
     <div className="motionPage">
@@ -285,71 +168,59 @@ export default function Appointments() {
           <h1 className={styles.title}>Appointments</h1>
           <p className={styles.sub}>{todayCount} today · {appts.length} total</p>
         </div>
-
-        <div className={styles.topbarActions}>
-          <button className={styles.secondaryBtn} onClick={sendTodayReminders}>
-            {access?.plan === 'gold' ? '💬 Send Today Reminders' : '🔒 WhatsApp Gold'}
-          </button>
-          <button className={styles.addBtn} onClick={() => { setShowForm((s) => !s); setEditingAppt(null); setConflict(null); }}>
-            {showForm && !editingAppt ? '✕ Close' : '➕ New Appointment'}
-          </button>
-        </div>
+        <button className={styles.addBtn} onClick={() => { setShowForm(s=>!s); setEditingAppt(null); setConflict(null); }}>
+          {showForm && !editingAppt ? '✕ Close' : '➕ New Appointment'}
+        </button>
       </div>
 
-      <div className={`${styles.summaryGrid} motionCard motionCardDelay1`}>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Today</span><strong>{todayCount}</strong><p>appointments scheduled</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Upcoming</span><strong>{summary.upcoming}</strong><p>future bookings</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Needs Reminder</span><strong>{summary.needsReminder}</strong><p>today & tomorrow</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Missed</span><strong>{summary.missed}</strong><p>scheduled but not done</p></div>
-      </div>
-
+      {/* Form */}
       {showForm && (
         <div className={`card ${styles.formCard} motionCard motionCardDelay1`}>
           <h3 className={styles.formTitle}>{editingAppt ? '✏️ Edit Appointment' : '➕ New Appointment'}</h3>
           <div className={styles.formGrid}>
             <div className={styles.field}>
               <label>Patient *</label>
-              <select value={form.patientId} onChange={(e) => selectPatient(e.target.value)}>
+              <select value={form.patientId} onChange={e=>selectPatient(e.target.value)}>
                 <option value="">Select patient...</option>
-                {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {patients.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </div>
             <div className={styles.field}>
               <label>Or type name</label>
-              <input value={form.patientName} onChange={(e) => set('patientName', e.target.value)} placeholder="Patient name" />
+              <input value={form.patientName} onChange={e=>set('patientName',e.target.value)} placeholder="Patient name"/>
             </div>
             <div className={styles.field}>
               <label>Date & Time *</label>
-              <input type="datetime-local" value={form.datetime} onChange={(e) => handleDateChange(e.target.value)} />
+              <input type="datetime-local" value={form.datetime} onChange={e=>handleDateChange(e.target.value)}/>
             </div>
             <div className={styles.field}>
               <label>Type</label>
-              <select value={form.type} onChange={(e) => set('type', e.target.value)}>
+              <select value={form.type} onChange={e=>set('type',e.target.value)}>
                 <option value="">Select type...</option>
-                {TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+                {['Endo','Operative','Surgery','Proth','Scaling','Consultation','Follow Up','Other'].map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className={styles.field}>
               <label>Status</label>
-              <select value={form.status} onChange={(e) => set('status', e.target.value)}>
-                {STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
+              <select value={form.status} onChange={e=>set('status',e.target.value)}>
+                {STATUS_OPTIONS.map(o=><option key={o}>{o}</option>)}
               </select>
             </div>
             <div className={`${styles.field} ${styles.full}`}>
               <label>Notes</label>
-              <input value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Optional notes..." />
+              <input value={form.notes} onChange={e=>set('notes',e.target.value)} placeholder="Optional notes..."/>
             </div>
           </div>
 
           {conflict && (
-            <div className={styles.conflictBox}>
-              <div className={styles.conflictTitle}>⚠️ Time Conflict!</div>
-              <div className={styles.conflictText}>
-                <strong>{conflict.patient}</strong> has appointment at <strong>{conflict.time}</strong> — only <strong>{conflict.diff} min</strong> apart
+            <div style={{background:'rgba(248,81,73,0.1)',border:'1px solid rgba(248,81,73,0.3)',borderRadius:10,padding:'14px 18px',margin:'12px 0'}}>
+              <div style={{fontWeight:700,color:'var(--danger)',fontSize:15,marginBottom:6}}>⚠️ Time Conflict!</div>
+              <div style={{color:'var(--muted)',fontSize:14,marginBottom:12}}>
+                <strong style={{color:'var(--text)'}}>{conflict.patient}</strong> has appointment at <strong style={{color:'var(--text)'}}>{conflict.time}</strong> — only <strong style={{color:'var(--warning)'}}>{conflict.diff} min</strong> apart
               </div>
-              <div className={styles.conflictActions}>
-                <button onClick={() => handleSave(true)} className={styles.conflictPrimary}>Book Anyway</button>
-                <button onClick={() => { set('datetime', ''); setConflict(null); }} className={styles.conflictGhost}>Choose Another Time</button>
+              <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                <button onClick={()=>handleSave(true)} style={{padding:'8px 20px',background:'var(--danger)',color:'white',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer'}}>Book Anyway</button>
+                <button onClick={()=>{set('datetime','');setConflict(null);}} style={{padding:'8px 20px',background:'transparent',color:'var(--muted)',border:'1px solid var(--border)',borderRadius:8,fontSize:14,cursor:'pointer'}}>Choose Another Time</button>
               </div>
             </div>
           )}
@@ -357,7 +228,7 @@ export default function Appointments() {
           {!conflict && (
             <div className={styles.formActions}>
               <button className={styles.cancelBtn} onClick={cancelForm}>Cancel</button>
-              <button className={styles.saveBtn} onClick={() => handleSave(false)} disabled={saving}>
+              <button className={styles.saveBtn} onClick={()=>handleSave(false)} disabled={saving}>
                 {saving ? 'Saving...' : editingAppt ? '💾 Save Changes' : '💾 Save'}
               </button>
             </div>
@@ -365,125 +236,75 @@ export default function Appointments() {
         </div>
       )}
 
-      <div className={`${styles.toolbar} motionCard motionCardDelay2`}>
-        <div className={styles.tabs}>
-          {[
-            ['today', 'Today'],
-            ['upcoming', 'Upcoming'],
-            ['reminders', 'Needs Reminder'],
-            ['missed', 'Missed'],
-            ['past', 'Past'],
-            ['all', 'All'],
-          ].map(([key, label]) => (
-            <button key={key} className={`${styles.tab} ${filter === key ? styles.activeTab : ''}`} onClick={() => setFilter(key)}>{label}</button>
-          ))}
-        </div>
-
-        <div className={styles.filterRow}>
-          <input className={styles.searchInput} value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search patient, type, notes..." />
-          <select className={styles.filterSelect} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="all">All statuses</option>
-            {STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-          </select>
-          <select className={styles.filterSelect} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="all">All types</option>
-            {TYPE_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-          </select>
-        </div>
+      {/* Filter tabs */}
+      <div className={`${styles.tabs} motionCard motionCardDelay2`}>
+        {['today','upcoming','past','all'].map(f => (
+          <button key={f} className={`${styles.tab} ${filter===f?styles.activeTab:''}`} onClick={()=>setFilter(f)}>
+            {f.charAt(0).toUpperCase()+f.slice(1)}
+          </button>
+        ))}
       </div>
 
+      {/* Mobile view toggle */}
       <div className={styles.viewTabs}>
-        <button className={`${styles.viewTab} ${mobileView === 'timeline' ? styles.activeViewTab : ''}`} onClick={() => setMobileView('timeline')}>📅 Timeline</button>
-        <button className={`${styles.viewTab} ${mobileView === 'folders' ? styles.activeViewTab : ''}`} onClick={() => setMobileView('folders')}>📁 Folders</button>
+        <button className={`${styles.viewTab} ${mobileView==='timeline'?styles.activeViewTab:''}`} onClick={()=>setMobileView('timeline')}>📅 Timeline</button>
+        <button className={`${styles.viewTab} ${mobileView==='folders'?styles.activeViewTab:''}`} onClick={()=>setMobileView('folders')}>📁 Folders</button>
       </div>
 
+      {/* Content grid */}
       <div className={`${styles.grid} motionCard motionCardDelay3`}>
-        <div className={`${styles.timelinePane} ${mobileView !== 'timeline' ? styles.mobileHidden : ''}`}>
-          <div className={styles.panelHead}>
-            <div>
-              <div className={styles.gridTitle}>📅 TIMELINE</div>
-              <div className={styles.panelSub}>{filtered.length} matching appointments</div>
-            </div>
-            <button className={styles.panelAction} onClick={sendTodayReminders}>{access?.plan === 'gold' ? 'Send reminders' : 'Unlock WhatsApp'}</button>
-          </div>
-
+        {/* Timeline */}
+        <div style={{display: typeof window !== 'undefined' && window.innerWidth < 768 && mobileView !== 'timeline' ? 'none' : 'block'}}>
+          <div className={styles.gridTitle}>📅 TIMELINE</div>
           {filtered.length === 0 ? (
-            <p className={styles.empty}>No appointments found</p>
-          ) : (
-            <div className={styles.list}>
-              {filtered.map((a) => {
-                const d = a.datetime ? parseISO(a.datetime) : null;
-                const isNow = d && isToday(d);
-                const isTom = d && isTomorrow(d);
-                const isMissed = d && d < now && ['Scheduled', 'Confirmed'].includes(a.status || 'Scheduled');
-                const hasPhone = !!getAppointmentPhone(a);
-                return (
-                  <div key={a.id} className={`${styles.apptCard} ${isNow ? styles.today : ''}`}>
-                    <div className={styles.apptDate}>
-                      <div className={styles.apptDay}>{d ? format(d, 'EEE') : '--'}</div>
-                      <div className={styles.apptNum}>{d ? format(d, 'd') : '-'}</div>
-                      <div className={styles.apptMonth}>{d ? format(d, 'MMM') : '-'}</div>
-                    </div>
-
-                    <div className={styles.apptTimeWrap}>
-                      <div className={styles.apptTime}>{d ? format(d, 'hh:mm a') : '--:--'}</div>
-                      <div className={styles.apptMini}>{isNow ? 'Today' : isTom ? 'Tomorrow' : d ? format(d, 'dd MMM') : '--'}</div>
-                    </div>
-
-                    <div className={styles.apptInfo}>
-                      <div className={styles.apptName}>{a.patientName}</div>
-                      <div className={styles.apptMeta}>
-                        {a.type && <span className={styles.apptType}>{a.type}</span>}
-                        {isNow && <span className={styles.todayTag}>Today</span>}
-                        {isTom && <span className={styles.tomTag}>Tomorrow</span>}
-                        {isMissed && <span className={styles.missedTag}>Missed</span>}
-                        {!hasPhone && <span className={styles.noPhoneTag}>No phone</span>}
-                      </div>
-                      {a.notes && <div className={styles.apptNotes}>{a.notes}</div>}
-                    </div>
-
-                    <div className={styles.apptRight}>
-                      <select className={styles.statusSelect} value={a.status || 'Scheduled'} onChange={(e) => handleStatus(a.id, e.target.value)}>
-                        {STATUS_OPTIONS.map((o) => <option key={o}>{o}</option>)}
-                      </select>
-                      <div className={styles.rowActions}>
-                        <button onClick={() => handleEdit(a)} className={styles.iconBtn}>✏️</button>
-                        {a.patientId && <button onClick={() => nav(`/patients/${a.patientId}`)} className={styles.iconBtn}>👤</button>}
-                        <button onClick={() => sendWhatsApp(a)} className={styles.whatsBtn}>💬</button>
-                        <button className={styles.delApptBtn} onClick={() => handleDelete(a.id)}>🗑️</button>
-                      </div>
-                    </div>
+            <p className={styles.empty}>No appointments</p>
+          ) : filtered.map(a => {
+            const d = a.datetime ? parseISO(a.datetime) : null;
+            const isNow = d && isToday(d);
+            const isTom = d && isTomorrow(d);
+            return (
+              <div key={a.id} className={`${styles.apptCard} ${isNow?styles.today:''}`}>
+                <div className={styles.apptDate}>
+                  <div className={styles.apptDay}>{d?format(d,'EEE'):'--'}</div>
+                  <div className={styles.apptNum}>{d?format(d,'d'):'-'}</div>
+                  <div className={styles.apptMonth}>{d?format(d,'MMM'):'-'}</div>
+                </div>
+                <div className={styles.apptTime}>
+                  {d ? (
+                    <>
+                      <span>{format(d,'hh:mm')}</span>
+                      <span className={styles.ampm}>{format(d,'a')}</span>
+                    </>
+                  ) : '--:--'}
+                </div>
+                <div className={styles.apptInfo}>
+                  <div className={styles.apptName}>{a.patientName}</div>
+                  <div className={styles.apptMeta}>
+                    {a.type && <span className={styles.apptType}>{a.type}</span>}
+                    {isNow && <span className={styles.todayTag}>Today</span>}
+                    {isTom && <span className={styles.tomTag}>Tomorrow</span>}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                </div>
+                <div className={styles.apptRight}>
+                  <select className={styles.statusSelect} value={a.status||'Scheduled'} onChange={e=>handleStatus(a.id,e.target.value)}>
+                    {STATUS_OPTIONS.map(o=><option key={o}>{o}</option>)}
+                  </select>
+                  <button onClick={()=>handleEdit(a)} style={{background:'rgba(124,58,237,0.15)',color:'var(--proth)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:8,padding:'5px 8px',fontSize:12,cursor:'pointer'}}>✏️</button>
+                  {a.patientId && <button onClick={()=>nav(`/patients/${a.patientId}`)} style={{background:'rgba(0,212,255,0.1)',color:'var(--accent)',border:'1px solid rgba(0,212,255,0.3)',borderRadius:8,padding:'5px 8px',fontSize:12,cursor:'pointer'}}>👤</button>}
+                  <button className={styles.delApptBtn} onClick={()=>handleDelete(a.id)}>🗑️</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        <div className={`${styles.foldersPane} ${mobileView !== 'folders' ? styles.mobileHidden : ''}`}>
-          <div className={styles.panelHead}>
-            <div>
-              <div className={styles.gridTitle}>📁 PATIENT FOLDERS</div>
-              <div className={styles.panelSub}>{patientFolders.length} patient folders</div>
-            </div>
-          </div>
-
-          <input className={styles.searchInput} value={patientQuery} onChange={(e) => setPatientQuery(e.target.value)} placeholder="Search patients..." />
-
+        {/* Patient Folders */}
+        <div style={{display: typeof window !== 'undefined' && window.innerWidth < 768 && mobileView !== 'folders' ? 'none' : 'block'}}>
+          <div className={styles.gridTitle}>📁 PATIENT FOLDERS</div>
           {patientFolders.length === 0 ? (
             <p className={styles.empty}>No appointments yet</p>
-          ) : patientFolders.map((pf) => (
-            <PatientFolder
-              key={pf.id || pf.name}
-              pf={pf}
-              nav={nav}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onStatus={handleStatus}
-              onWhatsApp={sendWhatsApp}
-              patientQuery={patientQuery}
-              setPatientQuery={setPatientQuery}
-            />
+          ) : patientFolders.map(pf => (
+            <PatientFolder key={pf.id||pf.name} pf={pf} nav={nav} onEdit={handleEdit} onDelete={handleDelete} onStatus={handleStatus} STATUS_OPTIONS={STATUS_OPTIONS}/>
           ))}
         </div>
       </div>
