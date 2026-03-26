@@ -40,7 +40,7 @@ function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, STATUS_OPTIONS }) 
              <div key={a.id||i} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 0',borderBottom:'1px solid var(--border)',flexWrap:'wrap'}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:isPast?'var(--muted)':'var(--success)',flexShrink:0}}></div>
                 <div style={{flex:1,minWidth:120}}>
-  <div style={{fontSize:13,fontWeight:600}}>{d?format(d,"d MMM · hh:mm a"):'--'}</div>
+  <div style={{fontSize:13,fontWeight:600}}>{d?format(d,'d MMM · hh:mm a'):'--'}</div>
                   <div style={{fontSize:12,color:'var(--muted)'}}>{a.type||'-'} {a.notes?'· '+a.notes:''}</div>
                 </div>
                 <select value={a.status||'Scheduled'} onChange={e=>onStatus(a.id,e.target.value)}
@@ -92,7 +92,7 @@ export default function Appointments() {
       if (!appt.datetime) continue;
       const existing = parseISO(appt.datetime);
       const diff = Math.abs(differenceInMinutes(newTime, existing));
-      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'HH:mm'), diff };
+      if (diff < 60) return { patient: appt.patientName, time: format(existing, 'hh:mm a'), diff };
     }
     return null;
   };
@@ -269,14 +269,7 @@ export default function Appointments() {
                   <div className={styles.apptNum}>{d?format(d,'d'):'-'}</div>
                   <div className={styles.apptMonth}>{d?format(d,'MMM'):'-'}</div>
                 </div>
-                <div className={styles.apptTime}>
-                  {d ? (
-                    <>
-                      <span>{format(d,'hh:mm')}</span>
-                      <span className={styles.ampm}>{format(d,'a')}</span>
-                    </>
-                  ) : '--:--'}
-                </div>
+                <div className={styles.apptTime}>{d?format(d,'hh:mm a'):'--:--'}</div>
                 <div className={styles.apptInfo}>
                   <div className={styles.apptName}>{a.patientName}</div>
                   <div className={styles.apptMeta}>
