@@ -299,22 +299,22 @@ export default function Dashboard() {
 
           <div className={styles.heroSide}>
             <div className={styles.heroStats}>
-              <div className={styles.heroStatCard}>
+              <div className={`${styles.heroStatCard} ${styles.heroStatCompact}`}>
                 <span>Patients</span>
                 <strong>{stats.total}</strong>
                 <small>{stats.inProgress} active cases now</small>
               </div>
-              <div className={styles.heroStatCard}>
+              <div className={`${styles.heroStatCard} ${styles.heroStatCompact}`}>
                 <span>Completion</span>
                 <strong>{completionRate}%</strong>
                 <small>{stats.done} cases marked done</small>
               </div>
-              <div className={styles.heroStatCard}>
+              <div className={`${styles.heroStatCard} ${styles.heroStatCompact}`}>
                 <span>Follow-up</span>
                 <strong>{followUpCount}</strong>
                 <small>Cases that still need attention</small>
               </div>
-              <div className={styles.heroStatCard}>
+              <div className={`${styles.heroStatCard} ${styles.heroStatCompact}`}>
                 <span>This week</span>
                 <strong>{weekPatients + weekAppointments}</strong>
                 <small>{weekPatients} patients · {weekAppointments} appointments</small>
@@ -333,23 +333,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className={`${styles.statsGrid} motionCard motionCardDelay1`}>
-        {[
-          { label: 'Total Patients', value: stats.total, color: 'var(--accent)', icon: '👥' },
-          { label: 'In Progress', value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
-          { label: 'Done', value: stats.done, color: 'var(--success)', icon: '✅' },
-          { label: 'Not Started', value: stats.notStarted, color: 'var(--warning)', icon: '⏳' },
-        ].map((s) => (
-          <div key={s.label} className={styles.statCard}>
-            <div className={styles.statIcon}>{s.icon}</div>
-            <div className={styles.statNum} style={{ color: s.color }}>
-              {s.value}
-            </div>
-            <div className={styles.statLabel}>{s.label}</div>
-          </div>
-        ))}
       </section>
 
       <section className={`${styles.middleGrid} motionCard motionCardDelay2`}>
