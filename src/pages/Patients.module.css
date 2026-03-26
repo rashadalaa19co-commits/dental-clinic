@@ -354,15 +354,6 @@
   justify-content: flex-end;
   gap: 6px;
 }
-
-.colName,
-.colPhone,
-.colType,
-.colProcedure,
-.colStatus,
-.colAlert,
-.colActions {
-}
 .iconBtn,
 .deleteBtn {
   width: 32px;
@@ -499,15 +490,14 @@
   }
 
   .table {
-    overflow-x: hidden;
+    overflow-x: auto;
     overflow-y: hidden;
   }
 
   .thead,
   .row {
-    min-width: 0;
-    width: 100%;
-    grid-template-columns: minmax(0, 1.5fr) minmax(92px, .9fr) 96px;
+    min-width: 760px;
+    grid-template-columns: 2.15fr 1.35fr .9fr 1fr 1fr .95fr 110px;
   }
 
   .thead {
@@ -523,46 +513,8 @@
     transform: none !important;
   }
 
-  .colPhone,
-  .colType,
-  .colProcedure,
-  .colAlert {
-    display: none;
-  }
-
-  .colStatus {
-    justify-self: start;
-  }
-
-  .colActions {
-    justify-self: end;
-  }
-
   .nameCell {
     gap: 8px;
-  }
-
-  .nameCell strong {
-    font-size: 12px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .nameCell small {
-    font-size: 9px;
-  }
-
-  .rowActions {
-    gap: 4px;
-  }
-
-  .iconBtn,
-  .deleteBtn {
-    width: 30px;
-    height: 30px;
-    border-radius: 9px;
-    opacity: 1;
   }
 
   .suggestionAvatar,
