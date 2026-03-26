@@ -38,7 +38,7 @@ export default function Patients() {
   };
 
   return (
-    <div>
+    <div className="pageEnter">
       <div className={styles.topbar}>
         <div>
           <h1 className={styles.title}>Patients</h1>
