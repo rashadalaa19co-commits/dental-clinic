@@ -88,7 +88,7 @@
   font-size: 28px;
   line-height: 1;
   margin-bottom: 8px;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .summaryCard p {
@@ -277,13 +277,13 @@
 
 .apptCard {
   display: grid;
-  grid-template-columns: 54px 82px minmax(0, 1fr) auto;
+  grid-template-columns: 50px 72px minmax(0, 1.2fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .apptCard:hover,
@@ -311,10 +311,10 @@
 }
 
 .apptNum {
-  font-size: 24px;
-  font-weight: 800;
+  font-size: 19px;
+  font-weight: 700;
   line-height: 1;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .apptTimeWrap {
@@ -339,6 +339,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .apptMeta {
@@ -393,13 +394,13 @@
 .apptRight {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .rowActions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .statusSelect,
@@ -416,8 +417,9 @@
 
 .statusSelect,
 .inlineSelect {
-  min-width: 110px;
-  padding: 8px 10px;
+  min-width: 86px;
+  padding: 6px 8px;
+  font-size: 12px;
 }
 
 .iconBtn,
@@ -425,8 +427,8 @@
 .inlineIconBtn,
 .inlineDangerBtn,
 .delApptBtn {
-  width: 34px;
-  height: 34px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
