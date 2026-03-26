@@ -160,7 +160,7 @@ export default function PatientForm() {
     name:'', phone:'', age:'', occupation:'',
     patientType:'', medicalHistory:[],
     chiefComplaint:'', tooth:'', procedure:'',
-    status:'Not started', difficulty:'', alert:'None',
+    status:'Not started', Sex:'', alert:'None',
     dateStart:'', notes:''
   });
   const [endoRows, setEndoRows] = useState([]);
@@ -274,9 +274,9 @@ export default function PatientForm() {
           </div>
           <div className={styles.field}>
             <label>Difficulty</label>
-            <select value={form.difficulty} onChange={e=>set('difficulty',e.target.value)}>
+            <select value={form.Sex} onChange={e=>set('difficulty',e.target.value)}>
               <option value="">Select...</option>
-              {['Easy','Medium','Hard'].map(o=><option key={o}>{o}</option>)}
+              {['Male','Female','911'].map(o=><option key={o}>{o}</option>)}
             </select>
           </div>
           <div className={styles.field}>
