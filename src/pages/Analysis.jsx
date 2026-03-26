@@ -497,7 +497,7 @@ export default function Analysis() {
     <div className={styles.page}>
       <section className={styles.hero}>
         <div>
-          <div className={styles.kicker}>Smart Analysis</div>
+          <div className={styles.kicker}>R7</div>
           <h1 className={styles.title}>See your clinic in one powerful view.</h1>
           <div className={styles.breakdownList}>
             {analytics.breakdown.map((item) => (
