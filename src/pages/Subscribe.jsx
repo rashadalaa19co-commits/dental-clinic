@@ -88,7 +88,7 @@ export default function Subscribe() {
 
     if (billing === 'monthly') return { current: '199 EGP', old: null, period: '/ month' };
     if (billing === 'semi') return { current: '799 EGP', old: '1200 EGP', period: '/ 6 months' };
-    return { current: '999 🔥 EGP', old: '2400 EGP', period: '/ year' };
+    return { current: '999 EGP 🔥', old: '2400 EGP', period: '/ year' };
   };
 
   const getButtonText = (planKey) => {
