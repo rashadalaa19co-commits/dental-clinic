@@ -12,7 +12,6 @@ const PLANS = [
     features: [
       { text: 'Up to 10 patients', available: true },
       { text: 'Appointments management', available: true },
-      { text: 'Patient details', available: true },
       { text: 'Simple dashboard', available: true },
       { text: 'Gallery', available: false },
       { text: 'WhatsApp reminders', available: false },
@@ -26,7 +25,7 @@ const PLANS = [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
       { text: 'Full patient records', available: true },
-      { text: 'Simple dashboard', available: true },
+      { text: 'Smart Analysis', available: true },
       { text: 'Gallery', available: false },
       { text: 'WhatsApp reminders', available: false },
     ],
@@ -39,9 +38,9 @@ const PLANS = [
       { text: 'Unlimited patients', available: true },
       { text: 'Appointments management', available: true },
       { text: 'Full patient records', available: true },
+      { text: 'Smart Analysis', available: true },
       { text: 'Gallery feature', available: true },
       { text: 'WhatsApp reminders', available: true },
-      { text: 'Best for active clinics', available: true },
     ],
   },
 ];
