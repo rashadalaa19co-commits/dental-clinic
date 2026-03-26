@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, updatePatient, checkAccess } from '../services/db';
 
@@ -12,6 +12,8 @@ const getPatientInitials = (name = '') => {
   return parts.map((part) => part[0]?.toUpperCase()).join('');
 };
 
+const normalize = (value) => String(value || '').trim().toLowerCase();
+
 export default function Gallery() {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
@@ -23,6 +25,12 @@ export default function Gallery() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [lightbox, setLightbox] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    photoMode: 'all',
+    status: 'all',
+    procedure: 'all',
+  });
   const fileRef = useRef(null);
   const fileRefs = useRef({});
 
@@ -79,7 +87,51 @@ export default function Gallery() {
     }
   };
 
-  const searchValue = search.trim().toLowerCase();
+  const searchValue = normalize(search);
+
+  const statusOptions = useMemo(() => {
+    const values = [...new Set(patients.map((p) => p.status).filter(Boolean))];
+    return values.sort((a, b) => a.localeCompare(b));
+  }, [patients]);
+
+  const procedureOptions = useMemo(() => {
+    const values = [...new Set(patients.map((p) => p.procedure).filter(Boolean))];
+    return values.sort((a, b) => a.localeCompare(b));
+  }, [patients]);
+
+  const matchesSearch = (patient) => {
+    if (!searchValue) return true;
+    return [
+      patient.name,
+      patient.phone,
+      patient.status,
+      patient.procedure,
+      patient.alert,
+      patient.patientType,
+    ]
+      .filter(Boolean)
+      .some((value) => normalize(value).includes(searchValue));
+  };
+
+  const matchesFilters = (patient) => {
+    const photosCount = (patient.photos || []).length;
+    const statusMatch = filters.status === 'all' || normalize(patient.status) === normalize(filters.status);
+    const procedureMatch = filters.procedure === 'all' || normalize(patient.procedure) === normalize(filters.procedure);
+    const photoMatch =
+      filters.photoMode === 'all' ||
+      (filters.photoMode === 'withPhotos' && photosCount > 0) ||
+      (filters.photoMode === 'withoutPhotos' && photosCount === 0);
+
+    return statusMatch && procedureMatch && photoMatch;
+  };
+
+  const filteredPatients = useMemo(() => {
+    return patients.filter((patient) => matchesSearch(patient) && matchesFilters(patient));
+  }, [patients, searchValue, filters]);
+
+  const patientsWithPhotos = useMemo(() => patients.filter((p) => (p.photos || []).length > 0), [patients]);
+  const filteredPatientsWithPhotos = filteredPatients.filter((p) => (p.photos || []).length > 0);
+  const totalPhotos = patientsWithPhotos.reduce((a, p) => a + (p.photos || []).length, 0);
 
   const suggestions = useMemo(() => {
     if (!searchValue) return [];
@@ -95,24 +147,11 @@ export default function Gallery() {
       .slice(0, 5);
   }, [patients, searchValue]);
 
-  const matchesSearch = (patient) => {
-    if (!searchValue) return true;
-    return [
-      patient.name,
-      patient.phone,
-      patient.status,
-      patient.procedure,
-      patient.alert,
-      patient.patientType,
-    ]
-      .filter(Boolean)
-      .some((value) => value.toLowerCase().includes(searchValue));
-  };
+  const activeFiltersCount = [filters.photoMode !== 'all', filters.status !== 'all', filters.procedure !== 'all'].filter(Boolean).length;
 
-  const patientsWithPhotos = patients.filter((p) => (p.photos || []).length > 0);
-  const filteredPatientsWithPhotos = patientsWithPhotos.filter(matchesSearch);
-  const allPatients = patients.filter(matchesSearch);
-  const totalPhotos = patientsWithPhotos.reduce((a, p) => a + (p.photos || []).length, 0);
+  const clearFilters = () => {
+    setFilters({ photoMode: 'all', status: 'all', procedure: 'all' });
+  };
 
   const openPatient = (patient) => {
     setShowSuggestions(false);
@@ -268,49 +307,116 @@ export default function Gallery() {
         </div>
       </div>
 
-      <div className="motionCard motionCardDelay1" style={{ marginBottom: 24, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
-        <div style={{ position: 'relative', maxWidth: 430 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px' }}>
-            <Search size={17} style={{ color: 'var(--muted)', flexShrink: 0 }} />
-            <input
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setShowSuggestions(true);
-              }}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
-              placeholder="Search by name, phone, procedure, status..."
-              style={{ border: 'none', background: 'transparent', color: 'var(--text)', outline: 'none', fontSize: 14, width: '100%', height: 52 }}
-            />
+      <div className="motionCard motionCardDelay1" style={{ marginBottom: 24, position: 'relative', zIndex: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 520, minWidth: 260 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px', minHeight: 50 }}>
+              <Search size={17} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+              <input
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setShowSuggestions(true);
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
+                placeholder="Search patient..."
+                style={{ border: 'none', background: 'transparent', color: 'var(--text)', outline: 'none', fontSize: 14, width: '100%', height: 48 }}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setShowSuggestions(false);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            {showSuggestions && suggestions.length > 0 && (
+              <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', zIndex: 30, boxShadow: '0 18px 45px rgba(0,0,0,0.22)', maxHeight: 320, overflowY: 'auto' }}>
+                {suggestions.map((p, index) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onMouseDown={() => openPatient(p)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', borderBottom: index === suggestions.length - 1 ? 'none' : '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,212,255,0.14)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                      {getPatientInitials(p.name)}
+                    </span>
+                    <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</strong>
+                      <small style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {p.phone || 'No phone'} · {p.status || 'No status'}
+                      </small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          {showSuggestions && suggestions.length > 0 && (
-            <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', zIndex: 20, boxShadow: '0 18px 45px rgba(0,0,0,0.22)' }}>
-              {suggestions.map((p, index) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onMouseDown={() => openPatient(p)}
-                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: 'transparent', border: 'none', borderBottom: index === suggestions.length - 1 ? 'none' : '1px solid var(--border)', color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}
-                >
-                  <span style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,212,255,0.14)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-                    {getPatientInitials(p.name)}
-                  </span>
-                  <span style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    <strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</strong>
-                    <small style={{ fontSize: 11, color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {p.phone || 'No phone'} · {p.status || 'No status'}
-                    </small>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowFilters((prev) => !prev)}
+            style={{ minHeight: 48, padding: '0 14px', background: showFilters ? 'rgba(0,212,255,0.12)' : 'var(--surface2)', color: showFilters ? 'var(--accent)' : 'var(--text)', border: '1px solid var(--border)', borderRadius: 14, display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}
+          >
+            <SlidersHorizontal size={16} />
+            Filters{activeFiltersCount ? ` (${activeFiltersCount})` : ''}
+          </button>
         </div>
+
+        {showFilters && (
+          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+            <select
+              value={filters.photoMode}
+              onChange={(e) => setFilters((prev) => ({ ...prev, photoMode: e.target.value }))}
+              style={filterInputStyle}
+            >
+              <option value="all">All photos</option>
+              <option value="withPhotos">With photos</option>
+              <option value="withoutPhotos">Without photos</option>
+            </select>
+
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
+              style={filterInputStyle}
+            >
+              <option value="all">All status</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+
+            <select
+              value={filters.procedure}
+              onChange={(e) => setFilters((prev) => ({ ...prev, procedure: e.target.value }))}
+              style={filterInputStyle}
+            >
+              <option value="all">All procedures</option>
+              {procedureOptions.map((procedure) => (
+                <option key={procedure} value={procedure}>{procedure}</option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={clearFilters}
+              style={{ ...filterInputStyle, cursor: 'pointer', fontWeight: 600 }}
+            >
+              Reset filters
+            </button>
+          </div>
+        )}
       </div>
 
-      {filteredPatientsWithPhotos.length > 0 && !searchValue && (
+      {filteredPatientsWithPhotos.length > 0 && !searchValue && filters.photoMode !== 'withoutPhotos' && (
         <div style={{ marginBottom: 32 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>
             📷 Patients with Photos
@@ -326,7 +432,7 @@ export default function Gallery() {
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
           <h3 style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
-            {searchValue ? `Search results (${allPatients.length})` : '👥 All Patients'}
+            {searchValue || activeFiltersCount ? `Search results (${filteredPatients.length})` : '👥 All Patients'}
           </h3>
 
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--text)', fontSize: 13, fontWeight: 600, userSelect: 'none', cursor: 'pointer' }}>
@@ -366,15 +472,15 @@ export default function Gallery() {
           </label>
         </div>
 
-        {!searchValue && !showAllPatients ? (
+        {!searchValue && !activeFiltersCount && !showAllPatients ? (
           <div className="motionCard motionCardDelay2" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: '26px 20px', color: 'var(--muted)', textAlign: 'center' }}>
             All patients are hidden by default to keep the gallery cleaner.
           </div>
-        ) : allPatients.length === 0 ? (
+        ) : filteredPatients.length === 0 ? (
           <p style={{ color: 'var(--muted)', textAlign: 'center', padding: 40 }}>No patients found</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-            {allPatients.map((p) => (
+            {filteredPatients.map((p) => (
               <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} />
             ))}
           </div>
@@ -417,13 +523,17 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
         )}
       </div>
 
-      <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto', alignItems: 'center', gap: 10 }}>
         <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(0,212,255,0.15)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
           {getPatientInitials(p.name)}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }} onClick={() => onSelect(p)}>
+        <div style={{ minWidth: 0 }} onClick={() => onSelect(p)}>
           <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{photos.length} photo{photos.length !== 1 ? 's' : ''} · {p.procedure || '-'}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', lineHeight: 1.4 }}>
+            <span style={{ whiteSpace: 'nowrap' }}>{photos.length} photo{photos.length !== 1 ? 's' : ''}</span>
+            <span style={{ opacity: 0.5 }}>•</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, maxWidth: '100%' }}>{p.procedure || '-'}</span>
+          </div>
         </div>
         <div>
           <input
@@ -440,7 +550,7 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
               fileRefs.current[p.id]?.click();
             }}
             disabled={uploadingId === p.id}
-            style={{ padding: '5px 10px', background: 'rgba(0,212,255,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,212,255,0.3)', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.5 : 1, whiteSpace: 'nowrap' }}
+            style={{ width: 36, height: 36, background: 'rgba(0,212,255,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,212,255,0.3)', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
             {uploadingId === p.id ? '⏳' : '📤'}
           </button>
@@ -449,3 +559,13 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
     </div>
   );
 }
+
+const filterInputStyle = {
+  minHeight: 44,
+  background: 'var(--surface2)',
+  color: 'var(--text)',
+  border: '1px solid var(--border)',
+  borderRadius: 12,
+  padding: '0 12px',
+  outline: 'none',
+};
