@@ -86,8 +86,9 @@ export default function Patients() {
                 )}
               </span>
               <span className={styles.rowActions}>
-                <button className={styles.editBtn} onClick={e => { e.stopPropagation(); nav(`/patients/${p.id}/edit`); }}>✏️</button>
-                <button className={styles.delBtn} onClick={e => handleDelete(e, p.id)}>🗑️</button>
+                <button className={styles.editBtn} onClick={e => { e.stopPropagation(); nav(`/patients/${p.id}`); }} title="View patient">👁️</button>
+                <button className={styles.editBtn} onClick={e => { e.stopPropagation(); nav(`/patients/${p.id}/edit`); }} title="Edit patient">✏️</button>
+                <button className={styles.delBtn} onClick={e => handleDelete(e, p.id)} title="Delete patient">🗑️</button>
               </span>
             </div>
           ))}
