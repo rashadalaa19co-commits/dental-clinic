@@ -1,6 +1,6 @@
 {
-  "name": "DentaCare Pro",
-  "short_name": "DentaCare",
+  "name": "AuraDent",
+  "short_name": "AuraDent",
   "description": "Dental Clinic Management System",
   "start_url": "/",
   "display": "standalone",
