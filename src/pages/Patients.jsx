@@ -1,534 +1,306 @@
-.title {
-  font-size: clamp(26px, 3.4vw, 40px);
-  font-weight: 800;
-  line-height: 0.98;
-}
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowUpDown, Plus, Search, SlidersHorizontal, UserPlus } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+import { getPatients, deletePatient } from '../services/db';
+import styles from './Patients.module.css';
 
-.sub {
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 6px;
-  max-width: 560px;
-}
+const STATUS_BADGE = {
+  Done: 'badge-done',
+  'In progress': 'badge-progress',
+  'Not started': 'badge-waiting',
+  'Follow Up': 'badge-followup',
+  'Lap waiting': 'badge-lap',
+};
 
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
-  gap: 16px;
-  padding: 18px 20px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background:
-    radial-gradient(circle at top right, rgba(0,212,255,0.12), transparent 34%),
-    radial-gradient(circle at bottom left, rgba(124,58,237,0.12), transparent 28%),
-    linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-}
+const FILTERS = ['All', 'Done', 'In progress', 'Follow Up', 'Urgent'];
 
-.heroStats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
+const getPatientInitials = (name = '') => {
+  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
+  if (!parts.length) return '?';
+  return parts.map((part) => part[0]?.toUpperCase()).join('');
+};
 
-.heroStatCard {
-  min-height: 96px;
-  padding: 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.05);
-  background: rgba(13,17,23,0.58);
-  display: grid;
-  gap: 6px;
-  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
-}
-.heroStatCard:hover {
-  transform: translateY(-3px);
-  border-color: rgba(0,212,255,0.18);
-  box-shadow: 0 14px 24px rgba(0,0,0,0.16);
-}
-.heroStatCard span {
-  color: var(--muted);
-  font-size: 11px;
-}
-.heroStatCard strong {
-  font-size: 30px;
-  font-family: 'Syne', sans-serif;
-  line-height: 1;
-}
-.heroStatCard small {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
+export default function Patients() {
+  const { user } = useAuth();
+  const nav = useNavigate();
+  const [patients, setPatients] = useState([]);
+  const [search, setSearch] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('recent');
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
-.toolbar {
-  margin-top: 14px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(13,17,23,0.62);
-  display: grid;
-  gap: 12px;
-}
+  const load = () => {
+    getPatients(user.uid).then((p) => {
+      setPatients(p);
+      setLoading(false);
+    });
+  };
 
-.toolbarTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+  useEffect(() => {
+    if (user) load();
+  }, [user]);
 
-.searchWrap {
-  position: relative;
-  flex: 1;
-  min-width: min(100%, 400px);
-}
+  const searchValue = search.trim().toLowerCase();
 
-.searchIcon {
-  position: absolute;
-  left: 13px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-}
+  const suggestions = useMemo(() => {
+    if (!searchValue) return [];
 
-.search {
-  width: 100%;
-  height: 46px;
-  padding: 0 14px 0 40px;
-  border-radius: 13px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-  color: var(--text);
-  outline: none;
-  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-}
-.search:focus {
-  border-color: rgba(0,212,255,0.26);
-  box-shadow: 0 0 0 4px rgba(0,212,255,0.08);
-  background: rgba(255,255,255,0.04);
-}
+    return patients
+      .filter((p) => {
+        const haystack = [p.name, p.phone, p.status, p.procedure, p.alert, p.patientType]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(searchValue);
+      })
+      .slice(0, 5);
+  }, [patients, searchValue]);
 
-.suggestions {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  right: 0;
-  z-index: 12;
-  display: grid;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(10,14,20,0.98);
-  box-shadow: 0 18px 34px rgba(0,0,0,0.26);
-}
+  const filtered = useMemo(() => {
+    let list = [...patients].filter((p) => {
+      const matchesSearch =
+        !searchValue ||
+        p.name?.toLowerCase().includes(searchValue) ||
+        p.phone?.includes(searchValue) ||
+        p.status?.toLowerCase().includes(searchValue) ||
+        p.procedure?.toLowerCase().includes(searchValue) ||
+        p.alert?.toLowerCase().includes(searchValue) ||
+        p.patientType?.toLowerCase().includes(searchValue);
 
-.suggestionItem {
-  border: none;
-  width: 100%;
-  padding: 9px 10px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.02);
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-align: left;
-  transition: transform .16s ease, background .16s ease;
-}
-.suggestionItem:hover {
-  transform: translateX(4px);
-  background: rgba(0,212,255,0.08);
-}
+      const matchesFilter =
+        activeFilter === 'All' ||
+        (activeFilter === 'Urgent'
+          ? p.alert?.toLowerCase() === 'urgent'
+          : p.status === activeFilter);
 
-.suggestionAvatar,
-.avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(0,212,255,0.14);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 800;
-  flex-shrink: 0;
-}
+      return matchesSearch && matchesFilter;
+    });
 
-.suggestionContent {
-  min-width: 0;
-  display: grid;
-}
-.suggestionContent strong {
-  font-size: 13px;
-}
-.suggestionContent small {
-  color: var(--muted);
-  font-size: 11px;
-  margin-top: 2px;
-}
+    list.sort((a, b) => {
+      if (sortBy === 'name-asc') return (a.name || '').localeCompare(b.name || '');
+      if (sortBy === 'name-desc') return (b.name || '').localeCompare(a.name || '');
+      if (sortBy === 'status') return (a.status || '').localeCompare(b.status || '');
+      return 0;
+    });
 
-.toolbarActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
+    return list;
+  }, [patients, searchValue, activeFilter, sortBy]);
 
-.sortBox {
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,212,255,0.2);
-  background: rgba(0,212,255,0.08);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--accent);
-}
-.sortBox select {
-  border: none;
-  background: transparent;
-  color: var(--accent);
-  outline: none;
-  font-weight: 700;
-  font-size: 13px;
-}
-.sortBox option {
-  color: #000;
-}
+  const counts = useMemo(() => ({
+    total: patients.length,
+    done: patients.filter((p) => p.status === 'Done').length,
+    progress: patients.filter((p) => p.status === 'In progress').length,
+    urgent: patients.filter((p) => p.alert?.toLowerCase() === 'urgent').length,
+  }), [patients]);
 
-.addBtn,
-.floatingAddBtn {
-  border: none;
-  background: var(--accent);
-  color: #000;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
-}
-.addBtn {
-  height: 44px;
-  padding: 0 16px;
-  border-radius: 12px;
-  font-size: 14px;
-}
-.addBtn:hover,
-.floatingAddBtn:hover {
-  transform: translateY(-3px);
-  opacity: .96;
-  box-shadow: 0 16px 28px rgba(0,212,255,0.18);
-}
+  const handleDelete = async (e, id) => {
+    e.stopPropagation();
+    if (!confirm('Delete this patient?')) return;
+    await deletePatient(user.uid, id);
+    load();
+  };
 
-.filtersRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-.filtersLabel {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-}
-.filterChips {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.filterChip {
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-  color: var(--muted);
-  padding: 8px 13px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
-}
-.filterChip:hover {
-  transform: translateY(-2px);
-  border-color: rgba(0,212,255,0.2);
-  color: var(--text);
-}
-.filterChipActive {
-  background: rgba(0,212,255,0.12);
-  border-color: rgba(0,212,255,0.28);
-  color: var(--accent);
-}
+  const openPatient = (id) => {
+    setShowSuggestions(false);
+    nav(`/patients/${id}`);
+  };
 
-.tableWrap {
-  margin-top: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(13,17,23,0.62);
-  overflow: hidden;
-}
-.tableHeader {
-  padding: 14px 16px 8px;
-}
-.tableHeader h2 {
-  font-size: 16px;
-  font-weight: 700;
-  margin-bottom: 4px;
-}
-.tableHeader p {
-  color: var(--muted);
-  font-size: 12px;
-}
-.table {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-.table::-webkit-scrollbar {
-  height: 8px;
-}
-.table::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.12);
-  border-radius: 999px;
-}
+  return (
+    <div className="motionPage">
+      <section className={`${styles.hero} motionHero`}>
+        <div>
+          <h1 className={styles.title}>Patients</h1>
+          <p className={styles.sub}>Manage your patients faster with live search, filters, and quick actions.</p>
+        </div>
 
-.thead,
-.row {
-  min-width: 940px;
-  display: grid;
-  grid-template-columns: 2.15fr 1.35fr 1fr 1fr 1.15fr 1fr 112px;
-}
+        <div className={styles.heroStats}>
+          <div className={styles.heroStatCard}>
+            <span>Total</span>
+            <strong>{counts.total}</strong>
+            <small>All patients</small>
+          </div>
+          <div className={styles.heroStatCard}>
+            <span>In Progress</span>
+            <strong>{counts.progress}</strong>
+            <small>Active cases</small>
+          </div>
+          <div className={styles.heroStatCard}>
+            <span>Urgent</span>
+            <strong>{counts.urgent}</strong>
+            <small>Need attention</small>
+          </div>
+        </div>
+      </section>
 
-.thead {
-  padding: 11px 16px;
-  background: rgba(255,255,255,0.03);
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-}
+      <div className={`${styles.toolbar} motionCard motionCardDelay1`}>
+        <div className={styles.toolbarTop}>
+          <div className={styles.searchWrap}>
+            <Search size={17} className={styles.searchIcon} />
+            <input
+              className={styles.search}
+              placeholder="Search by name, phone, procedure, alert..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 120)}
+            />
 
-.row {
-  padding: 12px 16px;
-  border-top: 1px solid var(--border);
-  align-items: center;
-  cursor: pointer;
-  font-size: 13px;
-  transition: transform .18s ease, background .18s ease, border-color .18s ease;
-}
-.row:hover {
-  background: linear-gradient(90deg, rgba(0,212,255,0.06), rgba(124,58,237,0.05));
-  transform: translateX(3px);
-}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className={styles.suggestions}>
+                {suggestions.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={styles.suggestionItem}
+                    onMouseDown={() => openPatient(p.id)}
+                  >
+                    <span className={styles.suggestionAvatar}>{getPatientInitials(p.name)}</span>
+                    <span className={styles.suggestionContent}>
+                      <strong>{p.name}</strong>
+                      <small>
+                        {p.phone || 'No phone'} · {p.status || 'No status'}
+                      </small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-.nameCell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-.nameCell strong {
-  display: block;
-  font-size: 13px;
-}
-.nameCell small {
-  color: var(--muted);
-  font-size: 10px;
-  margin-top: 2px;
-  display: block;
-}
-.muted {
-  color: var(--muted);
-}
+          <div className={styles.toolbarActions}>
+            <div className={styles.sortBox}>
+              <ArrowUpDown size={15} />
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="recent">Recent</option>
+                <option value="name-asc">Name A-Z</option>
+                <option value="name-desc">Name Z-A</option>
+                <option value="status">Status</option>
+              </select>
+            </div>
 
-.rowActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.iconBtn,
-.deleteBtn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.03);
-  transition: transform .16s ease, background .16s ease, opacity .16s ease;
-  opacity: .78;
-}
-.iconBtn:hover,
-.deleteBtn:hover {
-  transform: translateY(-2px);
-  opacity: 1;
-}
-.iconBtn:hover {
-  background: rgba(0,212,255,0.1);
-}
-.deleteBtn:hover {
-  background: rgba(248,81,73,0.15);
-}
+            <button className={styles.addBtn} onClick={() => nav('/patients/new')}>
+              <UserPlus size={16} />
+              Add Patient
+            </button>
+          </div>
+        </div>
 
-.empty,
-.emptyState {
-  color: var(--muted);
-  text-align: center;
-  padding: 34px;
-}
-.emptyState {
-  margin-top: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(13,17,23,0.62);
-  display: grid;
-  gap: 8px;
-}
-.emptyState strong {
-  color: var(--text);
-  font-size: 15px;
-}
+        <div className={styles.filtersRow}>
+          <div className={styles.filtersLabel}>
+            <SlidersHorizontal size={14} />
+            Quick filters
+          </div>
 
-.floatingAddBtn {
-  position: fixed;
-  right: 18px;
-  bottom: 20px;
-  height: 48px;
-  padding: 0 16px;
-  border-radius: 999px;
-  box-shadow: 0 16px 30px rgba(0,0,0,0.28);
-  z-index: 20;
-  font-size: 14px;
-}
+          <div className={styles.filterChips}>
+            {FILTERS.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                className={`${styles.filterChip} ${activeFilter === filter ? styles.filterChipActive : ''}`}
+                onClick={() => setActiveFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
-@media (max-width: 1180px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-}
+      {loading ? (
+        <p className={styles.empty}>Loading...</p>
+      ) : filtered.length === 0 ? (
+        <div className={`${styles.emptyState} motionCard motionCardDelay2`}>
+          <strong>No patients found</strong>
+          <span>Try another search term or switch the selected filter.</span>
+        </div>
+      ) : (
+        <div className={`${styles.tableWrap} motionCard motionCardDelay2`}>
+          <div className={styles.tableHeader}>
+            <div>
+              <h2>Patient List</h2>
+              <p>
+                Showing {filtered.length} of {patients.length} patients
+              </p>
+            </div>
+          </div>
 
-@media (max-width: 768px) {
-  .title {
-    font-size: 24px;
-  }
+          <div className={styles.table}>
+            <div className={styles.thead}>
+              <span>Name</span>
+              <span>Phone</span>
+              <span>Type</span>
+              <span>Procedure</span>
+              <span>Status</span>
+              <span>Alert</span>
+              <span>Actions</span>
+            </div>
 
-  .sub {
-    font-size: 12px;
-    margin-top: 4px;
-  }
+            {filtered.map((p) => (
+              <div key={p.id} className={styles.row} onClick={() => nav(`/patients/${p.id}`)}>
+                <span className={styles.nameCell}>
+                  <span className={styles.avatar}>{getPatientInitials(p.name)}</span>
+                  <span>
+                    <strong>{p.name}</strong>
+                    <small>ID: {p.id?.slice(0, 6) || '--'}</small>
+                  </span>
+                </span>
+                <span className={styles.muted}>{p.phone || '-'}</span>
+                <span className={styles.muted}>{p.patientType || '-'}</span>
+                <span className={styles.muted}>{p.procedure || '-'}</span>
+                <span>
+                  <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>
+                    {p.status || '-'}
+                  </span>
+                </span>
+                <span>
+                  {p.alert && p.alert !== 'None' ? (
+                    <span className={`badge ${p.alert === 'Urgent' ? 'badge-lap' : 'badge-followup'}`}>
+                      {p.alert}
+                    </span>
+                  ) : (
+                    <span className={styles.muted}>-</span>
+                  )}
+                </span>
+                <span className={styles.rowActions}>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nav(`/patients/${p.id}`);
+                    }}
+                    title="View patient"
+                  >
+                    👁️
+                  </button>
+                  <button
+                    className={styles.iconBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      nav(`/patients/${p.id}/edit`);
+                    }}
+                    title="Edit patient"
+                  >
+                    ✏️
+                  </button>
+                  <button className={styles.deleteBtn} onClick={(e) => handleDelete(e, p.id)} title="Delete patient">
+                    🗑️
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-  .hero {
-    padding: 14px;
-    gap: 12px;
-  }
-
-  .heroStats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  .heroStatCard {
-    min-height: 78px;
-    padding: 10px;
-    border-radius: 12px;
-  }
-  .heroStatCard strong {
-    font-size: 24px;
-  }
-
-  .toolbar {
-    padding: 12px;
-    gap: 10px;
-  }
-
-  .toolbarActions,
-  .filtersRow,
-  .searchWrap,
-  .sortBox,
-  .addBtn {
-    width: 100%;
-  }
-
-  .toolbarActions {
-    gap: 8px;
-  }
-
-  .sortBox,
-  .addBtn,
-  .search {
-    height: 42px;
-  }
-
-  .filterChips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    width: 100%;
-    padding-bottom: 2px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-  .filterChips::-webkit-scrollbar {
-    display: none;
-  }
-  .filterChip {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
-  .tableWrap {
-    border-radius: 14px;
-  }
-
-  .tableHeader {
-    padding: 14px 14px 8px;
-  }
-
-  .table {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-  .thead,
-  .row {
-    min-width: 760px;
-    grid-template-columns: 2.15fr 1.35fr .9fr 1fr 1fr .95fr 110px;
-  }
-
-  .thead {
-    display: grid;
-    padding: 10px 14px;
-    font-size: 10px;
-  }
-
-  .row {
-    padding: 12px 14px;
-    gap: 0;
-    font-size: 12px;
-    transform: none !important;
-  }
-
-  .nameCell {
-    gap: 8px;
-  }
-
-  .suggestionAvatar,
-  .avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 13px;
-  }
-
-  .floatingAddBtn {
-    right: 12px;
-    left: 12px;
-    bottom: 12px;
-    height: 50px;
-    font-size: 15px;
-  }
+      <button className={styles.floatingAddBtn} onClick={() => nav('/patients/new')} title="Add patient">
+        <Plus size={18} />
+        New Patient
+      </button>
+    </div>
+  );
 }
