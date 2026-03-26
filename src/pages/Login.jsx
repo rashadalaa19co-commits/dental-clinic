@@ -5,7 +5,7 @@ export default function Login() {
   const { login } = useAuth();
 
   return (
-    <div className={styles.wrap}>
+    <div className={`pageEnter ${styles.wrap}`}>
       <div className={styles.card}>
         <div className={styles.logo}>🦷</div>
         <h1 className={styles.title}>AuraDent</h1>
