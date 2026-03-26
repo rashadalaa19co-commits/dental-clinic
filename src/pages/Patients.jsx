@@ -231,33 +231,33 @@ export default function Patients() {
 
           <div className={styles.table}>
             <div className={styles.thead}>
-              <span>Name</span>
-              <span>Phone</span>
-              <span>Type</span>
-              <span>Procedure</span>
-              <span>Status</span>
-              <span>Alert</span>
-              <span>Actions</span>
+              <span className={styles.colName}>Name</span>
+              <span className={styles.colPhone}>Phone</span>
+              <span className={styles.colType}>Type</span>
+              <span className={styles.colProcedure}>Procedure</span>
+              <span className={styles.colStatus}>Status</span>
+              <span className={styles.colAlert}>Alert</span>
+              <span className={styles.colActions}>Actions</span>
             </div>
 
             {filtered.map((p) => (
               <div key={p.id} className={styles.row} onClick={() => nav(`/patients/${p.id}`)}>
-                <span className={styles.nameCell}>
+                <span className={`${styles.nameCell} ${styles.colName}`}>
                   <span className={styles.avatar}>{getPatientInitials(p.name)}</span>
                   <span>
                     <strong>{p.name}</strong>
                     <small>ID: {p.id?.slice(0, 6) || '--'}</small>
                   </span>
                 </span>
-                <span className={styles.muted}>{p.phone || '-'}</span>
-                <span className={styles.muted}>{p.patientType || '-'}</span>
-                <span className={styles.muted}>{p.procedure || '-'}</span>
-                <span>
+                <span className={`${styles.muted} ${styles.colPhone}`}>{p.phone || '-'}</span>
+                <span className={`${styles.muted} ${styles.colType}`}>{p.patientType || '-'}</span>
+                <span className={`${styles.muted} ${styles.colProcedure}`}>{p.procedure || '-'}</span>
+                <span className={styles.colStatus}>
                   <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>
                     {p.status || '-'}
                   </span>
                 </span>
-                <span>
+                <span className={styles.colAlert}>
                   {p.alert && p.alert !== 'None' ? (
                     <span className={`badge ${p.alert === 'Urgent' ? 'badge-lap' : 'badge-followup'}`}>
                       {p.alert}
@@ -266,7 +266,7 @@ export default function Patients() {
                     <span className={styles.muted}>-</span>
                   )}
                 </span>
-                <span className={styles.rowActions}>
+                <span className={`${styles.rowActions} ${styles.colActions}`}>
                   <button
                     className={styles.iconBtn}
                     onClick={(e) => {
