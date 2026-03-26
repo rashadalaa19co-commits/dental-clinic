@@ -278,7 +278,7 @@ export default function PatientForm() {
             <label>Sex</label>
             <select value={form.sex || ''} onChange={e=>set('sex',e.target.value)}>
               <option value="">Select...</option>
-              {['Male','Female'].map(o=><option key={o} value={o}>{o}</option>)}
+              {['Male','Female'].map(o => <option key={o} value={o}>{o}</option>)}
             </select>
           </div>
           <div className={styles.field}>
