@@ -106,7 +106,7 @@ Please contact us if you need to reschedule.`;
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
-    <div className="pageEnter">
+    <div className="motionPage">
       {access && !access.isActive && (
         <div
           style={{
@@ -149,7 +149,7 @@ Please contact us if you need to reschedule.`;
         </div>
       )}
 
-      <div className={styles.header}>
+      <div className={`${styles.header} motionHero`}>
         <div>
           <h1 className={styles.title}>Dashboard</h1>
           <p className={styles.sub}>
@@ -159,7 +159,7 @@ Please contact us if you need to reschedule.`;
         </div>
       </div>
 
-      <div className={styles.statsGrid}>
+      <div className={`${styles.statsGrid} motionCard motionCardDelay1`}>
         {[
           { label: 'Total Patients', value: stats.total, color: 'var(--accent)', icon: '👥' },
           { label: 'In Progress', value: stats.inProgress, color: 'var(--endo)', icon: '🔄' },
@@ -176,7 +176,7 @@ Please contact us if you need to reschedule.`;
         ))}
       </div>
 
-      <div className={styles.grid2}>
+      <div className={`${styles.grid2} motionCard motionCardDelay2`}>
         <div className="card">
           <h3 className={styles.sectionTitle}>📅 Today&apos;s Appointments</h3>
           {todayAppts.length === 0 ? (
