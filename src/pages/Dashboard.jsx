@@ -52,13 +52,13 @@ const getPatientInitials = (name = '') => {
 
   const plan = user?.plan || "free";
 
-  const handleWhatsAppClick = (phone) => {
-    if (plan !== "gold") {
-      alert("🔒 WhatsApp is a Gold feature. Upgrade to use it.");
-      return;
-    }
-    handleWhatsAppClick(${phone}`, "_blank");
-  };
+ const handleWhatsAppClick = (phone) => {
+  if (plan !== "gold") {
+    alert("🔒 WhatsApp is a Gold feature. Upgrade to use it.");
+    return;
+  }
+  window.open(`https://wa.me/${phone}`, "_blank");
+};
 
 export default function Dashboard() {
   const { user } = useAuth();
