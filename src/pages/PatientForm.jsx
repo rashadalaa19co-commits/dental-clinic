@@ -160,7 +160,7 @@ export default function PatientForm() {
     name:'', phone:'', age:'', occupation:'',
     patientType:'', medicalHistory:[],
     chiefComplaint:'', tooth:'', procedure:'',
-    status:'Not started', Sex:'', alert:'None',
+    status:'Not started', sex:'', alert:'None',
     dateStart:'', notes:''
   });
   const [endoRows, setEndoRows] = useState([]);
@@ -177,7 +177,7 @@ export default function PatientForm() {
       getPatients(user.uid).then(patients => {
         const p = patients.find(x => x.id === id);
         if (p) {
-          setForm({ ...p, medicalHistory: p.medicalHistory || p.dentalHistory || [] });
+          setForm({ ...p, sex: p.sex || p.Sex || p.difficulty || '', medicalHistory: p.medicalHistory || p.dentalHistory || [] });
           setEndoRows((p.endoVisits || []).map(t => ({...t, canals: t.canals || [{canal:"",wl:"",maf:"",note:""}]})));
           setOperativeRows(p.operativeVisits || []);
           setSurgeryRows(p.surgeryVisits || []);
@@ -216,7 +216,9 @@ export default function PatientForm() {
     if (!form.patientType) return alert('Please select patient type');
     setSaving(true);
     try {
-      const data = { ...form, endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
+      const data = { ...form, sex: form.sex || '', endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
+      delete data.Sex;
+      delete data.difficulty;
       if (isEdit) {
         await updatePatient(user.uid, id, data);
         nav('/patients/' + id);
@@ -273,10 +275,10 @@ export default function PatientForm() {
             </select>
           </div>
           <div className={styles.field}>
-            <label>Difficulty</label>
-            <select value={form.Sex} onChange={e=>set('difficulty',e.target.value)}>
+            <label>Sex</label>
+            <select value={form.sex || ''} onChange={e=>set('sex',e.target.value)}>
               <option value="">Select...</option>
-              {['Male','Female','911'].map(o=><option key={o}>{o}</option>)}
+              {['Male','Female'].map(o=><option key={o} value={o}>{o}</option>)}
             </select>
           </div>
           <div className={styles.field}>
