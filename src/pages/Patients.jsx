@@ -38,8 +38,8 @@ export default function Patients() {
   };
 
   return (
-    <div className="pageEnter">
-      <div className={styles.topbar}>
+    <div className="motionPage">
+      <div className={`${styles.topbar} motionHero`}>
         <div>
           <h1 className={styles.title}>Patients</h1>
           <p className={styles.sub}>{patients.length} total</p>
@@ -61,7 +61,7 @@ export default function Patients() {
       ) : filtered.length === 0 ? (
         <p className={styles.empty}>No patients found</p>
       ) : (
-        <div className={styles.table}>
+        <div className={`${styles.table} motionCard motionCardDelay1`}>
           <div className={styles.thead}>
             <span>Name</span><span>Phone</span><span>Type</span>
             <span>Procedure</span><span>Status</span><span>Alert</span><span></span>
