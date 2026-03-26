@@ -244,8 +244,9 @@ width: 100%;
 
 .grid {
 display: grid;
-grid-template-columns: 1.4fr 0.86fr;
+grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.85fr);
 gap: 20px;
+align-items: start;
 }
 
 .panelHead {
@@ -318,7 +319,8 @@ line-height: 1;
 }
 
 .apptTimeWrap {
-min-width: 0;
+min-width: 72px;
+flex-shrink: 0;
 }
 
 .apptTime {
@@ -335,6 +337,7 @@ white-space: nowrap;
 
 .apptInfo {
 min-width: 0;
+flex: 1;
 }
 
 .apptName {
@@ -398,6 +401,8 @@ color: var(--muted);
 display: flex;
 align-items: center;
 gap: 10px;
+margin-left: auto;
+flex-shrink: 0;
 }
 
 .rowActions {
@@ -622,19 +627,57 @@ color: var(--text);
 }
 
 .apptCard {
-grid-template-columns: 74px minmax(0, 1fr);
+flex-wrap: wrap;
 align-items: flex-start;
+gap: 8px;
+padding: 10px;
 }
 
 .apptDate {
 display: none;
 }
 
+.apptTimeWrap {
+min-width: 76px;
+}
+
+.apptInfo {
+flex: 1 1 calc(100% - 84px);
+min-width: 0;
+}
+
+.apptName {
+font-size: 13px;
+line-height: 1.3;
+word-break: break-word;
+overflow-wrap: anywhere;
+}
+
+.apptMeta {
+gap: 5px;
+margin-top: 5px;
+}
+
+.apptType,
+.todayTag,
+.tomTag,
+.missedTag,
+.noPhoneTag {
+font-size: 10px;
+padding: 3px 7px;
+}
+
 .apptRight {
-grid-column: 1 / -1;
 width: 100%;
 justify-content: space-between;
-margin-top: 10px;
+margin-top: 6px;
+margin-left: 0;
+padding-left: 84px;
+}
+
+.rowActions {
+gap: 5px;
+flex-wrap: nowrap;
 }
 
 .statusSelect {
@@ -705,6 +748,15 @@ padding-bottom: 4px;
 
 .tab {
 white-space: nowrap;
+}
+
+.iconBtn,
+.whatsBtn,
+.inlineIconBtn,
+.inlineDangerBtn,
+.delApptBtn {
+width: 32px;
+height: 32px;
 }
 }
 
