@@ -242,7 +242,7 @@ export default function PatientDetail() {
     ['Procedure', patient.procedure],
     ['Start', patient.dateStart],
     ['Alert', patient.alert],
-    ['Difficulty', patient.difficulty],
+    ['Sex', patient.Sex],
     ['Medical History', Array.isArray(patient.medicalHistory) ? patient.medicalHistory.join(', ') : (Array.isArray(patient.dentalHistory) ? patient.dentalHistory.join(', ') : patient.dentalHistory)],
   ];
 
