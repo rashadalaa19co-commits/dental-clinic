@@ -256,8 +256,8 @@ export default function PatientDetail() {
   const pastAppts = patientAppts.filter(a => !a.datetime || !isAfter(parseISO(a.datetime), new Date()));
 
   return (
-    <div>
-      <div className={styles.header}>
+    <div className="motionPage">
+      <div className={`${styles.header} motionHero`}>
         <div className={styles.headerLeft}>
           <button className={styles.backBtn} onClick={() => nav('/patients')}>Back</button>
           <div>
@@ -275,7 +275,7 @@ export default function PatientDetail() {
         </div>
       </div>
 
-      <div className={`card ${styles.infoCard}`}>
+      <div className={`card ${styles.infoCard} motionCard motionCardDelay1`}>
         <div className={styles.infoGrid}>
           {info.map(([label, val]) => val ? (
             <div key={label} className={styles.infoItem}>
