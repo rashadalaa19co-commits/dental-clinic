@@ -110,7 +110,7 @@ export default function Subscribe() {
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
-    <div className={styles.page}>
+    <div className={`pageEnter ${styles.page}`}>
       <div className={styles.hero}>
         <div>
           <div className={styles.eyebrow}>Plans & Pricing</div>
