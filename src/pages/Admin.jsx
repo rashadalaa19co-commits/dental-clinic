@@ -139,7 +139,7 @@ export default function Admin() {
   const free = users.filter(u => !u.isActive).length;
 
   return (
-    <div>
+    <div className="pageEnter">
       <h1 style={{fontSize:26,fontWeight:800,marginBottom:4}}>👑 Admin Panel</h1>
       <p style={{color:'var(--muted)',fontSize:14,marginBottom:24}}>Manage subscriptions</p>
 
