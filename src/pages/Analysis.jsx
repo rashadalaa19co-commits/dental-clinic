@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { format, getDay, getHours, isThisMonth, parseISO } from 'date-fns';
+import { getDay, getHours, isThisMonth, parseISO } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { getAppointments, getPatients } from '../services/db';
 import styles from './Analysis.module.css';
@@ -9,9 +9,47 @@ const TREATMENT_KEYS = [
   { key: 'endo', label: 'Endo', color: 'var(--endo)' },
   { key: 'operative', label: 'Operative', color: 'var(--operative)' },
   { key: 'surgery', label: 'Surgery', color: 'var(--surgery)' },
-  { key: 'proth', label: 'Proth', color: 'var(--proth)' },
+  { key: 'proth', label: 'Fixed', color: 'var(--proth)' },
   { key: 'general', label: 'General', color: 'var(--accent)' },
 ];
+
+const TITLE_LEVELS = {
+  Endo: [
+    { min: 0, max: 49, title: 'Senior' },
+    { min: 50, max: 99, title: 'Endo Master' },
+    { min: 100, max: 199, title: 'Root Canal Pro' },
+    { min: 200, max: 399, title: 'Pulp Expert' },
+    { min: 400, max: 999, title: 'Canal King' },
+    { min: 1000, max: Infinity, title: 'Aura Endo' },
+  ],
+  Operative: [
+    { min: 0, max: 49, title: 'Senior' },
+    { min: 50, max: 99, title: 'Operative Pro' },
+    { min: 100, max: 299, title: 'Smile Fixer' },
+    { min: 300, max: 499, title: 'Precision Dentist' },
+    { min: 500, max: 999, title: 'Cavity Hunter' },
+    { min: 1000, max: Infinity, title: 'Aura Operative' },
+  ],
+  Surgery: [
+    { min: 0, max: 9, title: 'Senior' },
+    { min: 10, max: 99, title: 'Surgical Pro' },
+    { min: 100, max: 199, title: 'Extraction Expert' },
+    { min: 200, max: 999, title: 'Surgical Master' },
+    { min: 1000, max: Infinity, title: 'Aura Surgery' },
+  ],
+  Fixed: [
+    { min: 0, max: 9, title: 'Senior' },
+    { min: 10, max: 49, title: 'Fixed Pro' },
+    { min: 50, max: 199, title: 'Crown Expert' },
+    { min: 200, max: 499, title: 'Smile Architect' },
+    { min: 500, max: Infinity, title: 'Aura Fixed' },
+  ],
+  All: [
+    { min: 0, max: 999, title: 'Rising' },
+    { min: 1000, max: 4999, title: 'Maestro' },
+    { min: 5000, max: Infinity, title: 'Aura' },
+  ],
+};
 
 function safeDate(value) {
   if (!value) return null;
@@ -30,15 +68,8 @@ function formatPct(value, total) {
   return `${Math.round((value / total) * 100)}%`;
 }
 
-function getInitials(name = '') {
-  return (
-    name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || 'P'
-  );
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function normalizeSex(patient) {
@@ -54,11 +85,44 @@ function getProcedureLabel(patient) {
   if (patient?.endoVisits?.length || procedure.includes('endo') || procedure.includes('rct')) return 'endo';
   if (patient?.operativeVisits?.length || procedure.includes('operative') || procedure.includes('filling') || procedure.includes('restoration')) return 'operative';
   if (patient?.surgeryVisits?.length || procedure.includes('surgery') || procedure.includes('surgical') || procedure.includes('extraction')) return 'surgery';
-  if (patient?.prothVisits?.length || procedure.includes('proth') || procedure.includes('crown') || procedure.includes('bridge') || procedure.includes('denture')) return 'proth';
+  if (patient?.prothVisits?.length || procedure.includes('proth') || procedure.includes('fixed') || procedure.includes('crown') || procedure.includes('bridge') || procedure.includes('denture')) return 'proth';
   return 'general';
 }
 
-function DonutChart({ title, subtitle, data }) {
+function getVisitCounts(patient) {
+  const endo = Array.isArray(patient?.endoVisits) ? patient.endoVisits.length : 0;
+  const operative = Array.isArray(patient?.operativeVisits) ? patient.operativeVisits.length : 0;
+  const surgery = Array.isArray(patient?.surgeryVisits) ? patient.surgeryVisits.length : 0;
+  const proth = Array.isArray(patient?.prothVisits) ? patient.prothVisits.length : 0;
+
+  if (endo || operative || surgery || proth) {
+    return { endo, operative, surgery, proth, general: 0 };
+  }
+
+  return {
+    endo: getProcedureLabel(patient) === 'endo' ? 1 : 0,
+    operative: getProcedureLabel(patient) === 'operative' ? 1 : 0,
+    surgery: getProcedureLabel(patient) === 'surgery' ? 1 : 0,
+    proth: getProcedureLabel(patient) === 'proth' ? 1 : 0,
+    general: getProcedureLabel(patient) === 'general' ? 1 : 0,
+  };
+}
+
+function getLevelMeta(type, count) {
+  const levels = TITLE_LEVELS[type] || [];
+  const currentIndex = levels.findIndex((level) => count >= level.min && count <= level.max);
+  const safeIndex = currentIndex === -1 ? levels.length - 1 : currentIndex;
+  const current = levels[safeIndex];
+  const next = levels[safeIndex + 1] || null;
+  return {
+    levels,
+    current,
+    next,
+    left: next ? Math.max(next.min - count, 0) : 0,
+  };
+}
+
+function DonutChart({ title, subtitle, data, footer }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   const radius = 74;
   const strokeWidth = 22;
@@ -123,6 +187,8 @@ function DonutChart({ title, subtitle, data }) {
           </div>
         ))}
       </div>
+
+      {footer ? <div className={styles.chartFooter}>{footer}</div> : null}
     </div>
   );
 }
@@ -153,6 +219,72 @@ function BarChart({ title, subtitle, data, color = 'var(--accent)' }) {
             <div className={styles.barLabel}>{item.label}</div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function TitleCard({ titles }) {
+  const [openKey, setOpenKey] = useState('Endo');
+
+  return (
+    <div className={`card ${styles.titlesCard}`}>
+      <div className={styles.cardHead}>
+        <div>
+          <h3>Treatment Progress</h3>
+          <p>Titles unlock automatically based on your real case volume</p>
+        </div>
+      </div>
+
+      <div className={styles.titleList}>
+        {titles.map((item) => {
+          const expanded = openKey === item.key;
+          return (
+            <div key={item.key} className={styles.titleGroup}>
+              <button
+                type="button"
+                className={styles.titleRow}
+                onClick={() => setOpenKey(expanded ? '' : item.key)}
+              >
+                <div>
+                  <strong>{item.label}</strong>
+                  <span>{item.count} case{item.count === 1 ? '' : 's'}</span>
+                </div>
+                <div className={styles.titleRight}>
+                  <div>
+                    <strong>{item.current.title}</strong>
+                    {item.next ? <span>{item.left} left to {item.next.title}</span> : <span>Top title reached</span>}
+                  </div>
+                  <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>▾</span>
+                </div>
+              </button>
+
+              {expanded ? (
+                <div className={styles.levelsPanel}>
+                  {item.levels.map((level, index) => {
+                    const isCurrent = level.title === item.current.title;
+                    const isDone = item.count >= level.min && !isCurrent;
+                    const isNext = item.next && level.title === item.next.title;
+                    return (
+                      <div key={`${item.key}-${level.title}-${index}`} className={styles.levelRow}>
+                        <span className={styles.levelIcon}>{isCurrent ? '⭐' : isDone ? '✓' : isNext ? '→' : '🔒'}</span>
+                        <div className={styles.levelMeta}>
+                          <strong>{level.title}</strong>
+                          <span>
+                            {level.max === Infinity ? `${level.min}+ cases` : `${level.min}-${level.max} cases`}
+                          </span>
+                        </div>
+                        <div className={styles.levelHint}>
+                          {isCurrent ? 'Current' : isNext ? `${item.left} left` : isDone ? 'Unlocked' : 'Locked'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -197,10 +329,24 @@ export default function Analysis() {
       return date && date.getMonth() === previousMonth.getMonth() && date.getFullYear() === previousMonth.getFullYear();
     }).length;
 
+    let returningPatients = 0;
+    let followUpPatients = 0;
+    let donePatients = 0;
+
     patients.forEach((patient) => {
       const sex = normalizeSex(patient);
       sexCounts[sex] = (sexCounts[sex] || 0) + 1;
-      treatmentCounts[getProcedureLabel(patient)] += 1;
+      const visitCounts = getVisitCounts(patient);
+      treatmentCounts.endo += visitCounts.endo;
+      treatmentCounts.operative += visitCounts.operative;
+      treatmentCounts.surgery += visitCounts.surgery;
+      treatmentCounts.proth += visitCounts.proth;
+      treatmentCounts.general += visitCounts.general;
+
+      const totalVisits = visitCounts.endo + visitCounts.operative + visitCounts.surgery + visitCounts.proth + visitCounts.general;
+      if (totalVisits > 1) returningPatients += 1;
+      if (patient.status === 'Follow Up') followUpPatients += 1;
+      if (patient.status === 'Done') donePatients += 1;
       const status = patient.status || 'Not started';
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
@@ -214,13 +360,7 @@ export default function Analysis() {
     ];
 
     let todayAppointments = 0;
-    let followUpPatients = 0;
-    let donePatients = 0;
-
-    patients.forEach((patient) => {
-      if (patient.status === 'Follow Up') followUpPatients += 1;
-      if (patient.status === 'Done') donePatients += 1;
-    });
+    let thisMonthAppointments = 0;
 
     appointments.forEach((appointment) => {
       const date = safeDate(appointment.datetime);
@@ -233,6 +373,7 @@ export default function Analysis() {
       else if (hour >= 18 && hour < 21) hourBuckets[3].value += 1;
 
       if (date.toDateString() === now.toDateString()) todayAppointments += 1;
+      if (isThisMonth(date)) thisMonthAppointments += 1;
     });
 
     const sexData = [
@@ -247,20 +388,59 @@ export default function Analysis() {
       color: item.color,
     }));
 
-    const activeCases = (statusCounts['In progress'] || 0) + (statusCounts['Follow Up'] || 0) + (statusCounts['Lap waiting'] || 0);
     const completionRate = patients.length ? Math.round((donePatients / patients.length) * 100) : 0;
     const growth = lastMonthPatients ? Math.round(((thisMonthPatients - lastMonthPatients) / lastMonthPatients) * 100) : thisMonthPatients ? 100 : 0;
     const peakDay = [...weekdayCounts].sort((a, b) => b.value - a.value)[0];
     const peakHours = [...hourBuckets].sort((a, b) => b.value - a.value)[0];
     const topTreatment = [...treatmentData].sort((a, b) => b.value - a.value)[0];
-    const healthScore = Math.max(45, Math.min(98, Math.round((completionRate * 0.45) + ((todayAppointments + activeCases) * 2) + (patients.length * 0.8))));
+
+    const growthScore = clamp(lastMonthPatients ? Math.round(((thisMonthPatients / Math.max(lastMonthPatients, 1)) * 12.5)) : (thisMonthPatients ? 18 : 0), 0, 25);
+    const returningScore = clamp(Math.round(((returningPatients / Math.max(patients.length, 1)) * 25)), 0, 25);
+    const activityScore = clamp(Math.round((thisMonthAppointments / 20) * 20), 0, 20);
+    const attendanceScore = clamp(Math.round((completionRate / 100) * 15), 0, 15);
+    const activeDays = weekdayCounts.filter((day) => day.value > 0).length;
+    const consistencyScore = clamp(Math.round((activeDays / 7) * 15), 0, 15);
+    const healthScore = clamp(growthScore + returningScore + activityScore + attendanceScore + consistencyScore, 0, 100);
+
+    const breakdown = [
+      {
+        label: 'Growth',
+        value: growthScore,
+        max: 25,
+        tip: growth >= 0 ? 'More new patients are pushing your score.' : 'Add more new patients this month.',
+      },
+      {
+        label: 'Returning',
+        value: returningScore,
+        max: 25,
+        tip: returningPatients ? 'Returning patients are helping your retention.' : 'Need more repeat visits to grow loyalty.',
+      },
+      {
+        label: 'Activity',
+        value: activityScore,
+        max: 20,
+        tip: thisMonthAppointments ? 'Booking activity is feeding the analysis.' : 'Add appointments to unlock stronger activity score.',
+      },
+      {
+        label: 'Attendance',
+        value: attendanceScore,
+        max: 15,
+        tip: completionRate >= 50 ? 'Completed cases are lifting the score.' : 'Finish more cases to boost attendance.',
+      },
+      {
+        label: 'Consistency',
+        value: consistencyScore,
+        max: 15,
+        tip: activeDays >= 4 ? 'Good spread through the week.' : 'Spread appointments across more days.',
+      },
+    ];
 
     const insights = [
       peakDay?.value
         ? `Your busiest day is ${peakDay.label} with ${peakDay.value} appointment${peakDay.value > 1 ? 's' : ''}.`
         : 'Start adding appointments to unlock traffic insights.',
       topTreatment?.value
-        ? `${topTreatment.label} is leading your case mix at ${formatPct(topTreatment.value, patients.length || 1)} of patients.`
+        ? `${topTreatment.label} is leading your case mix at ${formatPct(topTreatment.value, treatmentData.reduce((sum, item) => sum + item.value, 0) || 1)} of your cases.`
         : 'Treatment mix will appear automatically when you add cases.',
       followUpPatients
         ? `You have ${followUpPatients} follow-up case${followUpPatients > 1 ? 's' : ''} ready for recall or reminder.`
@@ -270,27 +450,44 @@ export default function Analysis() {
         : 'Peak-hour analysis will show once appointments are booked.',
     ];
 
-    const recentPatients = [...patients].slice(0, 5);
+    const titleCounts = {
+      Endo: treatmentCounts.endo,
+      Operative: treatmentCounts.operative,
+      Surgery: treatmentCounts.surgery,
+      Fixed: treatmentCounts.proth,
+      All: treatmentCounts.endo + treatmentCounts.operative + treatmentCounts.surgery + treatmentCounts.proth + treatmentCounts.general,
+    };
+
+    const titles = Object.entries(titleCounts).map(([label, count]) => ({
+      key: label,
+      label,
+      count,
+      ...getLevelMeta(label, count),
+    }));
+
+    let growthTone = 'Stable performance — keep building.';
+    if (growth > 0) growthTone = 'Strong growth this month — keep pushing.';
+    if (growth < 0) growthTone = 'Growth slipped this month — needs attention.';
 
     return {
       sexData,
       treatmentData,
       weekdayCounts,
       hourBuckets,
-      recentPatients,
+      titles,
+      insights,
+      breakdown,
       stats: {
         totalPatients: patients.length,
         totalAppointments: appointments.length,
-        activeCases,
         completionRate,
         thisMonthPatients,
         growth,
         healthScore,
         todayAppointments,
       },
-      insights,
-      peakDay,
       peakHours,
+      monthlyGrowthTone: growthTone,
     };
   }, [patients, appointments]);
 
@@ -302,9 +499,17 @@ export default function Analysis() {
         <div>
           <div className={styles.kicker}>Smart Analysis</div>
           <h1 className={styles.title}>See your clinic in one powerful view.</h1>
-          <p className={styles.subtitle}>
-            Trends, patient mix, peak hours, treatment breakdown, and quick insights that make the system feel premium from day one.
-          </p>
+          <div className={styles.breakdownList}>
+            {analytics.breakdown.map((item) => (
+              <div key={item.label} className={styles.breakdownItem}>
+                <div>
+                  <strong>{item.label}</strong>
+                  <span>{item.tip}</span>
+                </div>
+                <div className={styles.breakdownScore}>{item.value}/{item.max}</div>
+              </div>
+            ))}
+          </div>
         </div>
         <div className={styles.scoreCard}>
           <div className={styles.scoreRing} style={{ '--score': `${analytics.stats.healthScore}%` }}>
@@ -317,39 +522,23 @@ export default function Analysis() {
         </div>
       </section>
 
-      <section className={styles.statsGrid}>
-        <div className={`card ${styles.statCard}`}>
-          <span>👥 Total Patients</span>
-          <strong>{analytics.stats.totalPatients}</strong>
-          <small>{analytics.stats.thisMonthPatients} added this month</small>
-        </div>
-        <div className={`card ${styles.statCard}`}>
-          <span>📅 Appointments</span>
-          <strong>{analytics.stats.totalAppointments}</strong>
-          <small>{analytics.stats.todayAppointments} scheduled today</small>
-        </div>
-        <div className={`card ${styles.statCard}`}>
-          <span>🔄 Active Cases</span>
-          <strong>{analytics.stats.activeCases}</strong>
-          <small>{analytics.peakHours?.label || 'No peak yet'} busiest slot</small>
-        </div>
-        <div className={`card ${styles.statCard}`}>
-          <span>📈 Monthly Growth</span>
-          <strong>{analytics.stats.growth > 0 ? '+' : ''}{analytics.stats.growth}%</strong>
-          <small>{analytics.stats.completionRate}% completion rate</small>
-        </div>
-      </section>
-
       <section className={styles.mainGrid}>
         <DonutChart
           title="Patient Gender Mix"
           subtitle="Quick visual of female vs male patients"
           data={analytics.sexData}
+          footer={(
+            <div className={styles.metricFooterBox}>
+              <span>New Patients This Month</span>
+              <strong>{analytics.stats.thisMonthPatients}</strong>
+              <small>Added this month</small>
+            </div>
+          )}
         />
 
         <DonutChart
           title="Treatment Mix"
-          subtitle="Endo, operative, surgery, proth and general cases"
+          subtitle="Endo, operative, surgery, fixed and general cases"
           data={analytics.treatmentData}
         />
       </section>
@@ -384,37 +573,20 @@ export default function Analysis() {
               </div>
             ))}
           </div>
+          <div className={styles.growthBox}>
+            <div>
+              <span>Monthly Growth</span>
+              <strong>
+                {analytics.stats.growth > 0 ? '+' : ''}
+                {analytics.stats.growth}%
+              </strong>
+              <small>Compared to last month</small>
+            </div>
+            <p>{analytics.monthlyGrowthTone}</p>
+          </div>
         </div>
 
-        <div className={`card ${styles.recentCard}`}>
-          <div className={styles.cardHead}>
-            <div>
-              <h3>Recent Patients Snapshot</h3>
-              <p>Fast preview that feels premium on first use</p>
-            </div>
-          </div>
-          {analytics.recentPatients.length === 0 ? (
-            <div className={styles.emptyState}>
-              <strong>No patients yet</strong>
-              <p>Add your first patient and the analysis page will start building itself automatically.</p>
-            </div>
-          ) : (
-            <div className={styles.patientList}>
-              {analytics.recentPatients.map((patient) => (
-                <div key={patient.id} className={styles.patientRow}>
-                  <div className={styles.avatar}>{getInitials(patient.name)}</div>
-                  <div className={styles.patientMeta}>
-                    <strong>{patient.name || 'Unnamed Patient'}</strong>
-                    <span>
-                      {normalizeSex(patient)} · {patient.procedure || 'General'} · {patient.status || 'No status'}
-                    </span>
-                  </div>
-                  <div className={styles.rowDate}>{patient.dateStart ? format(new Date(patient.dateStart), 'dd MMM') : '—'}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <TitleCard titles={analytics.titles} />
       </section>
     </div>
   );
