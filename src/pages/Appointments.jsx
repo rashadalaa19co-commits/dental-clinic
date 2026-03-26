@@ -162,7 +162,7 @@ export default function Appointments() {
   const todayCount = appts.filter(a => a.datetime && isToday(parseISO(a.datetime))).length;
 
   return (
-    <div>
+    <div className="pageEnter">
       <div className={styles.topbar}>
         <div>
           <h1 className={styles.title}>Appointments</h1>
