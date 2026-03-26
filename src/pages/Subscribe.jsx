@@ -110,8 +110,8 @@ export default function Subscribe() {
   if (loading) return <div className={styles.loading}>Loading...</div>;
 
   return (
-    <div className={`pageEnter ${styles.page}`}>
-      <div className={styles.hero}>
+    <div className={`${styles.page} motionPage`}>
+      <div className={`${styles.hero} motionHero`}>
         <div>
           <div className={styles.eyebrow}>Plans & Pricing</div>
           <h1 className={styles.title}>Choose the plan that fits your clinic</h1>
@@ -131,7 +131,7 @@ export default function Subscribe() {
         </div>
       </div>
 
-      <div className={styles.toggleWrap}>
+      <div className={`${styles.toggleWrap} motionCard motionCardDelay1`}>
         <button
           className={`${styles.toggleBtn} ${billing === 'monthly' ? styles.toggleActive : ''}`}
           onClick={() => setBilling('monthly')}
@@ -152,7 +152,7 @@ export default function Subscribe() {
         </button>
       </div>
 
-      <div className={styles.grid}>
+      <div className={`${styles.grid} motionCard motionCardDelay2`}>
         {PLANS.map((plan) => {
           const isCurrent = plan.key === currentPlan;
           const isSilver = plan.key === 'silver';
