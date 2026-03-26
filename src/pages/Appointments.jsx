@@ -162,8 +162,8 @@ export default function Appointments() {
   const todayCount = appts.filter(a => a.datetime && isToday(parseISO(a.datetime))).length;
 
   return (
-    <div className="pageEnter">
-      <div className={styles.topbar}>
+    <div className="motionPage">
+      <div className={`${styles.topbar} motionHero`}>
         <div>
           <h1 className={styles.title}>Appointments</h1>
           <p className={styles.sub}>{todayCount} today · {appts.length} total</p>
@@ -175,7 +175,7 @@ export default function Appointments() {
 
       {/* Form */}
       {showForm && (
-        <div className={`card ${styles.formCard}`}>
+        <div className={`card ${styles.formCard} motionCard motionCardDelay1`}>
           <h3 className={styles.formTitle}>{editingAppt ? '✏️ Edit Appointment' : '➕ New Appointment'}</h3>
           <div className={styles.formGrid}>
             <div className={styles.field}>
@@ -237,7 +237,7 @@ export default function Appointments() {
       )}
 
       {/* Filter tabs */}
-      <div className={styles.tabs}>
+      <div className={`${styles.tabs} motionCard motionCardDelay2`}>
         {['today','upcoming','past','all'].map(f => (
           <button key={f} className={`${styles.tab} ${filter===f?styles.activeTab:''}`} onClick={()=>setFilter(f)}>
             {f.charAt(0).toUpperCase()+f.slice(1)}
@@ -252,7 +252,7 @@ export default function Appointments() {
       </div>
 
       {/* Content grid */}
-      <div className={styles.grid}>
+      <div className={`${styles.grid} motionCard motionCardDelay3`}>
         {/* Timeline */}
         <div style={{display: typeof window !== 'undefined' && window.innerWidth < 768 && mobileView !== 'timeline' ? 'none' : 'block'}}>
           <div className={styles.gridTitle}>📅 TIMELINE</div>
