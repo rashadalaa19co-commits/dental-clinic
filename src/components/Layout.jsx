@@ -3,9 +3,10 @@ import { useAuth } from '../hooks/useAuth';
 import styles from './Layout.module.css';
 
 const NAV = [
-  { to: '/',             icon: '📊', label: 'Dashboard' },
+  { to: '/',             icon: '🧠', label: 'Dashboard' },
   { to: '/patients',     icon: '👥', label: 'Patients' },
   { to: '/appointments', icon: '📅', label: 'Appointments' },
+  { to: '/analysis',     icon: '📊', label: 'Analysis' },
   { to: '/gallery',      icon: '📸', label: 'Gallery' },
   { to: '/subscribe',    icon: '💳', label: 'Subscribe' },
   { to: '/finance',      icon: '💰', label: 'Finance' },
