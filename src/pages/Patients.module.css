@@ -1,21 +1,21 @@
 .title {
-  font-size: clamp(26px, 3.4vw, 40px);
+  font-size: clamp(24px, 3vw, 38px);
   font-weight: 800;
   line-height: 0.98;
 }
 
 .sub {
   color: var(--muted);
-  font-size: 13px;
-  margin-top: 6px;
-  max-width: 560px;
+  font-size: 12px;
+  margin-top: 5px;
+  max-width: 520px;
 }
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.95fr);
-  gap: 16px;
-  padding: 18px 20px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.9fr);
+  gap: 14px;
+  padding: 16px 18px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background:
@@ -27,17 +27,17 @@
 .heroStats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .heroStatCard {
-  min-height: 96px;
-  padding: 14px;
-  border-radius: 14px;
+  min-height: 90px;
+  padding: 12px;
+  border-radius: 13px;
   border: 1px solid rgba(255,255,255,0.05);
   background: rgba(13,17,23,0.58);
   display: grid;
-  gap: 6px;
+  gap: 5px;
   transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
 }
 .heroStatCard:hover {
@@ -47,46 +47,46 @@
 }
 .heroStatCard span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
 }
 .heroStatCard strong {
-  font-size: 30px;
+  font-size: 26px;
   font-family: 'Syne', sans-serif;
   line-height: 1;
 }
 .heroStatCard small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1.35;
 }
 
 .toolbar {
-  margin-top: 14px;
-  padding: 14px 16px;
+  margin-top: 12px;
+  padding: 12px 14px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(13,17,23,0.62);
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .toolbarTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .searchWrap {
   position: relative;
   flex: 1;
-  min-width: min(100%, 400px);
+  min-width: min(100%, 360px);
 }
 
 .searchIcon {
   position: absolute;
-  left: 13px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
@@ -95,13 +95,14 @@
 
 .search {
   width: 100%;
-  height: 46px;
-  padding: 0 14px 0 40px;
-  border-radius: 13px;
+  height: 42px;
+  padding: 0 14px 0 38px;
+  border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
   color: var(--text);
   outline: none;
+  font-size: 13px;
   transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
 }
 .search:focus {
@@ -128,7 +129,7 @@
 .suggestionItem {
   border: none;
   width: 100%;
-  padding: 9px 10px;
+  padding: 8px 10px;
   border-radius: 10px;
   background: rgba(255,255,255,0.02);
   color: var(--text);
@@ -145,8 +146,8 @@
 
 .suggestionAvatar,
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: rgba(0,212,255,0.14);
   color: var(--accent);
@@ -154,6 +155,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 800;
+  font-size: 13px;
   flex-shrink: 0;
 }
 
@@ -162,24 +164,24 @@
   display: grid;
 }
 .suggestionContent strong {
-  font-size: 13px;
+  font-size: 12px;
 }
 .suggestionContent small {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 10px;
   margin-top: 2px;
 }
 
 .toolbarActions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .sortBox {
-  height: 44px;
-  padding: 0 14px;
+  height: 42px;
+  padding: 0 12px;
   border-radius: 12px;
   border: 1px solid rgba(0,212,255,0.2);
   background: rgba(0,212,255,0.08);
@@ -194,7 +196,7 @@
   color: var(--accent);
   outline: none;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
 }
 .sortBox option {
   color: #000;
@@ -213,10 +215,10 @@
   transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
 }
 .addBtn {
-  height: 44px;
-  padding: 0 16px;
+  height: 42px;
+  padding: 0 15px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 13px;
 }
 .addBtn:hover,
 .floatingAddBtn:hover {
@@ -228,7 +230,7 @@
 .filtersRow {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   justify-content: space-between;
   flex-wrap: wrap;
 }
@@ -250,9 +252,9 @@
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.03);
   color: var(--muted);
-  padding: 8px 13px;
+  padding: 7px 12px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   line-height: 1;
   transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
@@ -269,19 +271,19 @@
 }
 
 .tableWrap {
-  margin-top: 14px;
+  margin-top: 12px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(13,17,23,0.62);
   overflow: hidden;
 }
 .tableHeader {
-  padding: 14px 16px 8px;
+  padding: 12px 14px 8px;
 }
 .tableHeader h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .tableHeader p {
   color: var(--muted);
@@ -289,6 +291,7 @@
 }
 .table {
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 .table::-webkit-scrollbar {
@@ -301,27 +304,27 @@
 
 .thead,
 .row {
-  min-width: 940px;
+  min-width: 900px;
   display: grid;
-  grid-template-columns: 2.15fr 1.35fr 1fr 1fr 1.15fr 1fr 112px;
+  grid-template-columns: 2.15fr 1.35fr 1fr 1fr 1.15fr 1fr 108px;
 }
 
 .thead {
-  padding: 11px 16px;
+  padding: 10px 14px;
   background: rgba(255,255,255,0.03);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .5px;
+  letter-spacing: .45px;
 }
 
 .row {
-  padding: 12px 16px;
+  padding: 11px 14px;
   border-top: 1px solid var(--border);
   align-items: center;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   transition: transform .18s ease, background .18s ease, border-color .18s ease;
 }
 .row:hover {
@@ -337,7 +340,7 @@
 }
 .nameCell strong {
   display: block;
-  font-size: 13px;
+  font-size: 12px;
 }
 .nameCell small {
   color: var(--muted);
@@ -356,8 +359,8 @@
 }
 .iconBtn,
 .deleteBtn {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
   border-radius: 10px;
   background: rgba(255,255,255,0.03);
@@ -380,10 +383,10 @@
 .emptyState {
   color: var(--muted);
   text-align: center;
-  padding: 34px;
+  padding: 32px;
 }
 .emptyState {
-  margin-top: 14px;
+  margin-top: 12px;
   border-radius: 16px;
   border: 1px solid var(--border);
   background: rgba(13,17,23,0.62);
@@ -392,19 +395,19 @@
 }
 .emptyState strong {
   color: var(--text);
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .floatingAddBtn {
   position: fixed;
-  right: 18px;
-  bottom: 20px;
-  height: 48px;
-  padding: 0 16px;
+  right: 16px;
+  bottom: 18px;
+  height: 46px;
+  padding: 0 15px;
   border-radius: 999px;
   box-shadow: 0 16px 30px rgba(0,0,0,0.28);
   z-index: 20;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 @media (max-width: 1180px) {
@@ -415,36 +418,37 @@
 
 @media (max-width: 768px) {
   .title {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .sub {
-    font-size: 12px;
+    font-size: 11px;
     margin-top: 4px;
   }
 
   .hero {
-    padding: 14px;
-    gap: 12px;
+    padding: 12px;
+    gap: 10px;
+    border-radius: 14px;
   }
 
   .heroStats {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .heroStatCard {
-    min-height: 78px;
-    padding: 10px;
-    border-radius: 12px;
+    min-height: 72px;
+    padding: 9px;
+    border-radius: 11px;
   }
   .heroStatCard strong {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .toolbar {
-    padding: 12px;
-    gap: 10px;
+    padding: 10px;
+    gap: 9px;
   }
 
   .toolbarActions,
@@ -462,7 +466,7 @@
   .sortBox,
   .addBtn,
   .search {
-    height: 42px;
+    height: 40px;
   }
 
   .filterChips {
@@ -486,28 +490,31 @@
   }
 
   .tableHeader {
-    padding: 14px 14px 8px;
+    padding: 12px 12px 8px;
   }
 
   .table {
+    display: block;
     overflow-x: auto;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
   }
 
   .thead,
   .row {
-    min-width: 760px;
-    grid-template-columns: 2.15fr 1.35fr .9fr 1fr 1fr .95fr 110px;
+    min-width: 820px;
+    grid-template-columns: 2.2fr 1.35fr .9fr 1fr 1fr .95fr 104px;
   }
 
   .thead {
     display: grid;
-    padding: 10px 14px;
+    padding: 10px 12px;
     font-size: 10px;
   }
 
   .row {
-    padding: 12px 14px;
+    display: grid;
+    padding: 11px 12px;
     gap: 0;
     font-size: 12px;
     transform: none !important;
@@ -519,16 +526,21 @@
 
   .suggestionAvatar,
   .avatar {
-    width: 34px;
-    height: 34px;
-    font-size: 13px;
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .rowActions {
+    justify-content: flex-start;
   }
 
   .floatingAddBtn {
     right: 12px;
-    left: 12px;
+    left: auto;
     bottom: 12px;
-    height: 50px;
-    font-size: 15px;
+    height: 44px;
+    padding: 0 14px;
+    font-size: 13px;
   }
 }
