@@ -57,8 +57,8 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="patients" element={<Patients />} />
             <Route path="patients/new" element={<PatientForm />} />
-            <Route path="patients/:id" element={<PatientDetail />} />
             <Route path="patients/:id/edit" element={<PatientForm />} />
+            <Route path="patients/:id" element={<PatientDetail />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="gallery" element={<Gallery />} />
             <Route path="subscribe" element={<Subscribe />} />
