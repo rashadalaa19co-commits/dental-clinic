@@ -78,6 +78,36 @@
   line-height: 1.6;
 }
 
+.toggleWrap {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 2px 0 6px;
+  flex-wrap: wrap;
+}
+
+.toggleBtn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.toggleBtn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.toggleActive {
+  background: rgba(0,212,255,0.12);
+  border-color: rgba(0,212,255,0.28);
+  color: var(--accent);
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -91,23 +121,19 @@
   padding: 22px;
   display: flex;
   flex-direction: column;
-  min-height: 470px;
+  min-height: 490px;
   position: relative;
   overflow: hidden;
 }
 
-.highlight {
-  border-color: rgba(0, 212, 255, 0.35);
-  box-shadow: 0 0 0 1px rgba(0,212,255,0.08), 0 18px 40px rgba(0,212,255,0.08);
+.silverCard {
+  border-color: rgba(192, 192, 192, 0.14);
+  box-shadow: 0 0 0 1px rgba(192, 192, 192, 0.03), 0 10px 24px rgba(192, 192, 192, 0.03);
 }
 
-.highlight::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto auto 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
+.goldCard {
+  border-color: rgba(255, 215, 0, 0.14);
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.03), 0 10px 24px rgba(255, 215, 0, 0.03);
 }
 
 .currentCard {
@@ -131,22 +157,40 @@
   margin-bottom: 16px;
 }
 
+.badgeSilver {
+  background: rgba(192,192,192,0.09);
+  color: #d4d7dd;
+}
+
 .badgeGold {
-  background: rgba(0,212,255,0.12);
-  color: var(--accent);
+  background: rgba(255,215,0,0.10);
+  color: #f5da6a;
 }
 
 .planName {
   font-family: 'DM Sans', sans-serif;
   font-size: 22px;
   font-weight: 800;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+}
+
+.priceBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.oldPrice {
+  color: var(--muted);
+  font-size: 14px;
+  text-decoration: line-through;
 }
 
 .priceRow {
   display: flex;
   align-items: flex-end;
   gap: 6px;
+  flex-wrap: wrap;
 }
 
 .price {
@@ -206,6 +250,7 @@
   font-size: 14px;
   font-weight: 700;
   transition: 0.2s ease;
+  cursor: pointer;
 }
 
 .cta:hover {
@@ -213,13 +258,22 @@
   background: rgba(255,255,255,0.12);
 }
 
+.silverBtn {
+  background: rgba(192,192,192,0.10);
+  color: #eceff4;
+}
+
+.silverBtn:hover {
+  background: rgba(192,192,192,0.14);
+}
+
 .goldBtn {
-  background: linear-gradient(90deg, var(--accent), #6ae8ff);
-  color: #071019;
+  background: rgba(255,215,0,0.12);
+  color: #f7de6d;
 }
 
 .goldBtn:hover {
-  background: linear-gradient(90deg, #30dcff, #87eeff);
+  background: rgba(255,215,0,0.16);
 }
 
 .currentBtn {
@@ -231,51 +285,6 @@
 .currentBtn:hover {
   transform: none;
   background: rgba(63,185,80,0.12);
-}
-
-.compareHeader {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.compareTitle {
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.compareSub {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.tableWrap {
-  overflow-x: auto;
-}
-
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 620px;
-}
-
-.table th,
-.table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid var(--border);
-  text-align: left;
-  font-size: 14px;
-}
-
-.table th {
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.table tbody tr:hover {
-  background: rgba(255,255,255,0.02);
 }
 
 @media (max-width: 1100px) {
