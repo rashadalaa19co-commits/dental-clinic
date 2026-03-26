@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Analysis from './pages/Analysis';
 import Patients from './pages/Patients';
 import PatientForm from './pages/PatientForm';
 import PatientDetail from './pages/PatientDetail';
@@ -13,7 +14,6 @@ import Gallery from './pages/Gallery';
 import Admin from './pages/Admin';
 import Locked from './pages/Locked';
 import Subscribe from './pages/Subscribe';
-import Analysis from './pages/Analysis';
 import './styles/global.css';
 
 if ('serviceWorker' in navigator) {
