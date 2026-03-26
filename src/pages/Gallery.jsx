@@ -73,7 +73,7 @@ export default function Gallery() {
   // Locked screen
   if (!access?.hasGallery) {
     return (
-      <div className="pageEnter" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh',gap:16,textAlign:'center',padding:'20px'}}>
+      <div className="motionPage motionHero" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:'70vh',gap:16,textAlign:'center',padding:'20px'}}>
         <div style={{fontSize:64}}>📸</div>
         <div style={{fontSize:28,fontWeight:800,background:'linear-gradient(135deg,#f59e0b,#f97316)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
           Gold Plan Feature
@@ -116,8 +116,8 @@ export default function Gallery() {
   if (selectedPatient) {
     const p = patients.find(x => x.id === selectedPatient.id) || selectedPatient;
     return (
-      <div className="pageEnter">
-        <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:24,flexWrap:'wrap'}}>
+      <div className="motionPage">
+        <div className="motionHero" style={{display:'flex',alignItems:'center',gap:14,marginBottom:24,flexWrap:'wrap'}}>
           <button onClick={()=>setSelectedPatient(null)}
             style={{padding:'8px 16px',background:'transparent',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:8,fontSize:14,cursor:'pointer'}}>
             ← Back
@@ -183,9 +183,9 @@ export default function Gallery() {
 
   // Main gallery grid view
   return (
-    <div className="pageEnter">
+    <div>
       {/* Header */}
-      <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
+      <div className="motionHero" style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:24,flexWrap:'wrap',gap:12}}>
         <div>
           <h1 style={{fontSize:26,fontWeight:800}}>📸 Gallery</h1>
           <p style={{color:'var(--muted)',fontSize:14,marginTop:4}}>
@@ -195,7 +195,7 @@ export default function Gallery() {
       </div>
 
       {/* Search */}
-      <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 16px',marginBottom:24,maxWidth:360}}>
+      <div className="motionCard motionCardDelay1" style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'10px 16px',marginBottom:24,maxWidth:360}}>
         <span style={{color:'var(--muted)',fontSize:16}}>🔍</span>
         <input value={search} onChange={e=>setSearch(e.target.value)}
           placeholder="Search patients..."
