@@ -1,6 +1,6 @@
 export default function Locked() {
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}>
+    <div className="pageEnter" style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}> 
       <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:20,padding:'48px 40px',textAlign:'center',width:380,maxWidth:'90vw'}}>
         <div style={{fontSize:56,marginBottom:16}}>🔒</div>
         <h1 style={{fontSize:24,fontWeight:800,marginBottom:12}}>Free Trial Ended</h1>
