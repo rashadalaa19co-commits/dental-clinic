@@ -8,7 +8,7 @@ export default function Login() {
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.logo}>🦷</div>
-        <h1 className={styles.title}>DentaCare Pro</h1>
+        <h1 className={styles.title}>AuraDent</h1>
         <p className={styles.sub}>Dental Clinic Management System</p>
         <button className={styles.btn} onClick={login}>
           <svg width="18" height="18" viewBox="0 0 24 24">
