@@ -232,7 +232,6 @@ function TitleCard({ titles }) {
     Operative: { icon: '✨', tone: 'operative' },
     Surgery: { icon: '⚡', tone: 'surgery' },
     Fixed: { icon: '👑', tone: 'fixed' },
-    All: { icon: '📈', tone: 'all' },
   };
 
   return (
@@ -481,7 +480,6 @@ export default function Analysis() {
       Operative: treatmentCounts.operative,
       Surgery: treatmentCounts.surgery,
       Fixed: treatmentCounts.proth,
-      All: treatmentCounts.endo + treatmentCounts.operative + treatmentCounts.surgery + treatmentCounts.proth + treatmentCounts.general,
     };
 
     const titles = Object.entries(titleCounts).map(([label, count]) => ({
