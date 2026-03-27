@@ -220,7 +220,7 @@ export default function Dashboard() {
       {access && !access.isActive && (
         <div className={`${styles.trialBanner} motionCard`}>
           <div>
-            <div className={styles.trialTitle}>🔒 Free Trial — {access.patientCount}/5 patients used</div>
+            <div className={styles.trialTitle}>🔒 Free Trial — {access.patientCount}/10 patients used</div>
             <div className={styles.trialSub}>Upgrade to unlock unlimited patients and premium tools.</div>
           </div>
           <a
