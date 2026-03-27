@@ -121,42 +121,167 @@
   border:1px solid rgba(255,255,255,0.05);
 }
 .growthBox p { color: var(--text); font-size: 13px; line-height: 1.5; }
-.titleList { display:flex; flex-direction:column; gap:10px; }
+/* ===== Treatment Progress Widgets ===== */
+.titleList {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap:14px;
+}
 .titleGroup {
-  border:1px solid rgba(255,255,255,0.05); border-radius:14px; overflow:hidden;
-  background: rgba(255,255,255,0.02);
+  position:relative;
+  border:1px solid rgba(255,255,255,0.06);
+  border-radius:18px;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)),
+    rgba(255,255,255,0.02);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.titleGroup::before {
+  content:'';
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.9;
+}
+.titleGroupEndo::before {
+  background:
+    radial-gradient(circle at top right, rgba(0,212,255,0.18), transparent 36%),
+    linear-gradient(135deg, rgba(0,212,255,0.06), transparent 55%);
+}
+.titleGroupOperative::before {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(124,58,237,0.18), transparent 36%),
+    linear-gradient(135deg, rgba(124,58,237,0.07), transparent 55%);
+}
+.titleGroupSurgery::before {
+  background:
+    radial-gradient(circle at 82% 18%, rgba(255,122,89,0.20), transparent 38%),
+    linear-gradient(135deg, rgba(255,122,89,0.08), transparent 58%);
+}
+.titleGroupFixed::before {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(255,210,90,0.16), transparent 36%),
+    linear-gradient(135deg, rgba(255,210,90,0.08), transparent 55%);
+}
+.titleGroupAll::before {
+  background:
+    radial-gradient(circle at 85% 15%, rgba(0,212,255,0.14), transparent 34%),
+    radial-gradient(circle at 20% 100%, rgba(124,58,237,0.12), transparent 32%);
 }
 .titleRow {
-  width:100%; background: transparent; border:none; color: inherit; cursor:pointer;
-  display:flex; align-items:center; justify-content:space-between; gap:12px;
-  padding:14px 16px; text-align:left;
+  width:100%;
+  position:relative;
+  z-index:1;
+  background: transparent;
+  border:none;
+  color: inherit;
+  cursor:pointer;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  text-align:left;
 }
-.titleRow > div:first-child { min-width: 0; }
-.titleRow > div:first-child strong, .titleRight strong { word-break: break-word; }
-.titleRow > div:first-child span, .titleRight span { line-height: 1.45; }
-.titleRow strong { display:block; font-size:15px; }
-.titleRow span { color: var(--muted); font-size:12px; }
-.titleRight {
-  display:flex; align-items:center; gap:14px;
+.titleTop {
+  display:grid;
+  grid-template-columns: auto 1fr auto;
+  align-items:center;
+  gap:10px;
+  min-width:0;
 }
-.titleRight > div { text-align:right; }
+.titleIcon {
+  width:38px;
+  height:38px;
+  border-radius:12px;
+  display:grid;
+  place-items:center;
+  font-size:18px;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 10px 18px rgba(0,0,0,0.16);
+}
+.titleTopText { min-width:0; }
+.titleTopText strong {
+  display:block;
+  font-size:16px;
+  line-height:1.2;
+}
+.titleTopText span {
+  display:block;
+  color: var(--muted);
+  font-size:12px;
+  margin-top:2px;
+}
+.titleBadge {
+  max-width:100%;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  white-space:nowrap;
+  background: rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.06);
+}
+.titleMiddle {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.progressMeta strong {
+  display:block;
+  font-size:15px;
+  line-height:1.15;
+}
+.progressMeta span {
+  display:block;
+  color: var(--muted);
+  font-size:12px;
+  margin-top:3px;
+}
+.progressTrack {
+  width:100%;
+  height:8px;
+  border-radius:999px;
+  overflow:hidden;
+  background: rgba(255,255,255,0.07);
+}
+.progressFill {
+  height:100%;
+  border-radius:999px;
+  background: linear-gradient(90deg, var(--accent), rgba(124,58,237,0.92));
+  box-shadow: 0 6px 16px rgba(0,212,255,0.25);
+}
 .chevron {
-  font-size:14px; color: var(--accent); transition: transform .22s ease;
+  flex:0 0 auto;
+  font-size:14px;
+  color: var(--accent);
+  transition: transform .22s ease;
 }
 .chevronOpen { transform: rotate(180deg); }
 .levelsPanel {
-  display:flex; flex-direction:column; gap:8px; padding:0 14px 14px;
+  position:relative;
+  z-index:1;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  padding:0 12px 12px;
 }
 .levelRow {
-  display:grid; grid-template-columns: 26px 1fr auto; gap:12px; align-items:center;
-  padding:10px 12px; border-radius:12px; background: rgba(255,255,255,0.02);
+  display:grid;
+  grid-template-columns: 24px 1fr auto;
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border-radius:12px;
+  background: rgba(255,255,255,0.03);
   border:1px solid rgba(255,255,255,0.04);
 }
 .levelIcon { text-align:center; }
-.levelMeta strong { display:block; font-size:14px; }
-.levelMeta span { color: var(--muted); font-size:12px; }
-.levelHint { font-size:12px; color: var(--accent); white-space:nowrap; }
-
+.levelMeta strong { display:block; font-size:13px; }
+.levelMeta span { color: var(--muted); font-size:11px; }
+.levelHint { font-size:11px; color: var(--accent); white-space:nowrap; }
 @keyframes growUp {
   from { height: 0; opacity: .4; }
   to { opacity: 1; }
@@ -177,21 +302,20 @@
   .barChart { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
   .cardHead { margin-bottom: 12px; }
   .cardHead h3 { font-size: 18px; }
+  .titleList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
   .titleRow {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 14px;
+    padding: 12px;
+    gap: 9px;
   }
-  .titleRight {
-    width: 100%;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
+  .titleTop {
+    grid-template-columns: auto 1fr;
   }
-  .titleRight > div {
-    text-align: left;
-    min-width: 0;
-    flex: 1;
+  .titleBadge {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
   .levelsPanel {
     padding: 0 10px 10px;
@@ -205,8 +329,18 @@
     white-space: normal;
     margin-top: 2px;
   }
+  .titleTopText strong {
+    font-size: 15px;
+  }
+  .progressMeta strong {
+    font-size: 14px;
+  }
   .donutSvg {
     width: 190px;
     height: 190px;
   }
+}
+
+@media (max-width: 460px) {
+  .titleList { grid-template-columns: 1fr; }
 }
