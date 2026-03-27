@@ -105,7 +105,7 @@ export default function Subscribe() {
         `Hi, I want a manual subscription for the ${planName} plan (${billingLabel}) for ${doctorName}.`
       );
 
-      return `https://wa.me/201010562664?text=${text}`;
+      return `https://wa.me/201555354570?text=${text}`;
     };
   }, [user, billing]);
 
