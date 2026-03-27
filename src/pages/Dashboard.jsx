@@ -171,13 +171,21 @@ export default function Dashboard() {
   };
 
   const buildWhatsAppMessage = (appt) => {
-    const time = appt.datetime ? format(parseISO(appt.datetime), 'HH:mm') : '--';
+    const time = appt.datetime ? format(parseISO(appt.datetime), 'hh:mm a') : '--';
     const date = appt.datetime ? format(parseISO(appt.datetime), 'dd/MM/yyyy') : '--';
 
-    return `Hello ${appt.patientName || ''},\nThis is a reminder of your appointment at DentaCare Pro.\nDate: ${date}\nTime: ${time}\nType: ${appt.type || 'Dental appointment'}\n\nPlease contact us if you need to reschedule.`;
+    return `Hello ${appt.patientName || ''},\nThis is a reminder of your appointment at AuraDent.\nDate: ${date}\nTime: ${time}\nType: ${appt.type || 'Dental appointment'}\n\nPlease contact us if you need to reschedule.`;
+  };
+
+  const ensureGoldWhatsApp = () => {
+    if (access?.plan === 'gold') return true;
+    nav('/subscribe');
+    return false;
   };
 
   const sendWhatsApp = (appt) => {
+    if (!ensureGoldWhatsApp()) return;
+
     const phone = getAppointmentPhone(appt);
 
     if (!phone) {
@@ -187,10 +195,11 @@ export default function Dashboard() {
 
     const message = buildWhatsAppMessage(appt);
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const sendTodayReminders = () => {
+    if (!ensureGoldWhatsApp()) return;
     if (!todayAppts.length) return;
     const firstWithPhone = todayAppts.find((appt) => getAppointmentPhone(appt));
 
@@ -203,6 +212,8 @@ export default function Dashboard() {
   };
 
   if (loading) return <div className={styles.loading}>Loading...</div>;
+
+  const isGoldPlan = access?.plan === 'gold';
 
   return (
     <div className="motionPage">
@@ -251,12 +262,13 @@ export default function Dashboard() {
                 Add Appointment
               </button>
               <button
-                className={styles.secondaryAction}
+                className={`${styles.secondaryAction} ${!isGoldPlan ? styles.lockedAction : ''}`}
                 type="button"
-                onClick={access?.plan === 'gold' ? sendTodayReminders : () => nav('/subscribe')}
+                onClick={isGoldPlan ? sendTodayReminders : () => nav('/subscribe')}
+                title={isGoldPlan ? 'Send WhatsApp reminders' : 'Gold feature'}
               >
-                <MessageCircle size={16} />
-                {access?.plan === 'gold' ? 'Send Reminders' : 'Unlock WhatsApp'}
+                {isGoldPlan ? <MessageCircle size={16} /> : <Lock size={16} />}
+                {isGoldPlan ? 'Send Reminders' : 'Unlock WhatsApp'}
               </button>
             </div>
 
@@ -284,12 +296,12 @@ export default function Dashboard() {
                     </span>
 
                     <button
-                      className={styles.whatsBtn}
-                      onClick={() => sendWhatsApp(a)}
-                      title="Send WhatsApp"
+                      className={`${styles.whatsBtn} ${!isGoldPlan ? styles.lockedWhatsBtn : ''}`}
+                      onClick={isGoldPlan ? () => sendWhatsApp(a) : () => nav('/subscribe')}
+                      title={isGoldPlan ? 'Send WhatsApp' : 'Gold feature'}
                       type="button"
                     >
-                      <MessageCircle size={16} />
+                      {isGoldPlan ? <MessageCircle size={16} /> : <Lock size={16} />}
                     </button>
                   </div>
                 ))}
@@ -368,7 +380,7 @@ export default function Dashboard() {
               <span>Action</span>
               <strong>{access?.plan === 'gold' ? 'WhatsApp ready' : 'Upgrade available'}</strong>
               <small>
-                {access?.plan === 'gold'
+                {isGoldPlan
                   ? 'Send reminders directly from today list'
                   : 'Gold unlocks reminders and gallery tools'}
               </small>
@@ -469,13 +481,13 @@ export default function Dashboard() {
               <button
                 type="button"
                 className={styles.toolCard}
-                onClick={access?.plan === 'gold' ? sendTodayReminders : () => nav('/subscribe')}
+                onClick={isGoldPlan ? sendTodayReminders : () => nav('/subscribe')}
               >
                 <div>
                   <span>WhatsApp</span>
-                  <strong>{access?.plan === 'gold' ? 'Send reminders' : 'Upgrade to unlock'}</strong>
+                  <strong>{isGoldPlan ? 'Send reminders' : 'Upgrade to unlock'}</strong>
                 </div>
-                {access?.plan === 'gold' ? <MessageCircle size={18} /> : <Lock size={18} />}
+                {isGoldPlan ? <MessageCircle size={18} /> : <Lock size={18} />}
               </button>
             </div>
           </div>
