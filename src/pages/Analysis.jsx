@@ -227,6 +227,14 @@ function BarChart({ title, subtitle, data, color = 'var(--accent)' }) {
 function TitleCard({ titles }) {
   const [openKey, setOpenKey] = useState('');
 
+  const typeMeta = {
+    Endo: { icon: '🦷', tone: 'endo' },
+    Operative: { icon: '✨', tone: 'operative' },
+    Surgery: { icon: '⚡', tone: 'surgery' },
+    Fixed: { icon: '👑', tone: 'fixed' },
+    All: { icon: '📈', tone: 'all' },
+  };
+
   return (
     <div className={`card ${styles.titlesCard}`}>
       <div className={styles.cardHead}>
@@ -239,23 +247,41 @@ function TitleCard({ titles }) {
       <div className={styles.titleList}>
         {titles.map((item) => {
           const expanded = openKey === item.key;
+          const meta = typeMeta[item.label] || { icon: '📌', tone: 'all' };
+          const levelSpan = Math.max((item.current?.max ?? item.count + 1) - item.current.min + 1, 1);
+          const progressValue = item.next
+            ? ((item.count - item.current.min) / Math.max(item.next.min - item.current.min, 1)) * 100
+            : 100;
+
           return (
-            <div key={item.key} className={styles.titleGroup}>
+            <div key={item.key} className={`${styles.titleGroup} ${styles[`titleGroup${meta.tone[0].toUpperCase()}${meta.tone.slice(1)}`]}`}>
               <button
                 type="button"
                 className={styles.titleRow}
                 onClick={() => setOpenKey(expanded ? '' : item.key)}
               >
-                <div>
-                  <strong>{item.label}</strong>
-                  <span>{item.count} case{item.count === 1 ? '' : 's'}</span>
+                <div className={styles.titleTop}>
+                  <span className={styles.titleIcon}>{meta.icon}</span>
+                  <div className={styles.titleTopText}>
+                    <strong>{item.label}</strong>
+                    <span>{item.count} case{item.count === 1 ? '' : 's'}</span>
+                  </div>
+                  <span className={styles.titleBadge}>{item.current.title}</span>
                 </div>
-                <div className={styles.titleRight}>
-                  <div>
-                    <strong>{item.current.title}</strong>
-                    {item.next ? <span>{item.left} left to {item.next.title}</span> : <span>Top title reached</span>}
+
+                <div className={styles.titleMiddle}>
+                  <div className={styles.progressMeta}>
+                    <strong>{item.next ? `${item.left} left` : 'Completed'}</strong>
+                    <span>{item.next ? `to ${item.next.title}` : 'Top title reached'}</span>
                   </div>
                   <span className={`${styles.chevron} ${expanded ? styles.chevronOpen : ''}`}>▾</span>
+                </div>
+
+                <div className={styles.progressTrack}>
+                  <div
+                    className={styles.progressFill}
+                    style={{ width: `${clamp(progressValue, 6, 100)}%` }}
+                  />
                 </div>
               </button>
 
