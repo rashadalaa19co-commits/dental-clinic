@@ -44,7 +44,13 @@ function verifyHmac(payload, receivedHmac) {
   return calculated === receivedHmac;
 }
 
-async function updateClinicSubscription({ uid, plan, billing, expiryDate, amountEgp }) {
+function getBaseExpiryDate(currentTs, paidAt) {
+  const current = currentTs?.toDate ? currentTs.toDate() : currentTs ? new Date(currentTs) : null;
+  if (current && current > paidAt) return current;
+  return paidAt;
+}
+
+async function updateClinicSubscription({ uid, plan, billing, months, paidAt, amountEgp }) {
   const clinicRef = db.collection('clinics').doc(uid);
   const clinicSnap = await clinicRef.get();
 
@@ -53,7 +59,10 @@ async function updateClinicSubscription({ uid, plan, billing, expiryDate, amount
   }
 
   const clinicData = clinicSnap.data() || {};
-  const expiryTs = admin.firestore.Timestamp.fromDate(expiryDate);
+  const silverBase = getBaseExpiryDate(clinicData.silverExpiry, paidAt);
+  const goldBase = getBaseExpiryDate(clinicData.goldExpiry, paidAt);
+  const silverExpiryDate = addMonthsSafe(silverBase, Number(months || 1));
+  const goldExpiryDate = addMonthsSafe(goldBase, Number(months || 1));
 
   const update = {
     plan,
@@ -67,23 +76,20 @@ async function updateClinicSubscription({ uid, plan, billing, expiryDate, amount
   if (plan === 'silver') {
     update.isActive = true;
     update.hasGallery = false;
-    update.silverExpiry = expiryTs;
+    update.silverExpiry = admin.firestore.Timestamp.fromDate(silverExpiryDate);
     update.goldExpiry = null;
   }
 
   if (plan === 'gold') {
-    const currentSilverExpiry = clinicData.silverExpiry?.toDate?.();
-    const silverExpiry = currentSilverExpiry && currentSilverExpiry > expiryDate
-      ? clinicData.silverExpiry
-      : expiryTs;
-
     update.isActive = true;
     update.hasGallery = true;
-    update.silverExpiry = silverExpiry;
-    update.goldExpiry = expiryTs;
+    update.silverExpiry = admin.firestore.Timestamp.fromDate(silverExpiryDate);
+    update.goldExpiry = admin.firestore.Timestamp.fromDate(goldExpiryDate);
   }
 
   await clinicRef.set(update, { merge: true });
+
+  return plan === 'gold' ? goldExpiryDate : silverExpiryDate;
 }
 
 module.exports = async function handler(req, res) {
@@ -127,7 +133,14 @@ module.exports = async function handler(req, res) {
     }
 
     const paidAt = txn.created_at ? new Date(txn.created_at) : new Date();
-    const expiryDate = addMonthsSafe(paidAt, Number(orderData.months || 1));
+    const finalExpiryDate = await updateClinicSubscription({
+      uid: orderData.uid,
+      plan: orderData.plan,
+      billing: orderData.billing,
+      months: Number(orderData.months || 1),
+      paidAt,
+      amountEgp: Number(txn.amount_cents || 0) / 100,
+    });
 
     await paymentRef.set({
       uid: orderData.uid,
@@ -144,22 +157,15 @@ module.exports = async function handler(req, res) {
       merchantOrderId: orderData.merchantOrderId,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       paidAt: admin.firestore.Timestamp.fromDate(paidAt),
-      expiresAt: admin.firestore.Timestamp.fromDate(expiryDate),
+      expiresAt: admin.firestore.Timestamp.fromDate(finalExpiryDate),
       raw: txn,
-    });
-
-    await updateClinicSubscription({
-      uid: orderData.uid,
-      plan: orderData.plan,
-      billing: orderData.billing,
-      expiryDate,
-      amountEgp: Number(txn.amount_cents || 0) / 100,
     });
 
     await orderRef.set({
       status: 'paid',
       paymobTxnId: txn.id,
       paidAt: admin.firestore.Timestamp.fromDate(paidAt),
+      expiresAt: admin.firestore.Timestamp.fromDate(finalExpiryDate),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 
