@@ -25,6 +25,10 @@ export async function checkAccess(uid, userInfo) {
       photoURL: userInfo?.photoURL || '',
       silverExpiry: null,
       goldExpiry: null,
+      billing: null,
+      paymentMethod: null,
+      subscriptionStatus: 'free',
+      updatedAt: serverTimestamp(),
     });
     return { allowed: true, isActive: false, hasGallery: false, patientCount: 0, plan: 'free', daysLeft: null, goldDaysLeft: null };
   }
@@ -35,6 +39,7 @@ export async function checkAccess(uid, userInfo) {
   let isActive = data.isActive || false;
   let hasGallery = data.hasGallery || false;
   let plan = data.plan || 'free';
+  const subscriptionStatus = data.subscriptionStatus || (plan === 'free' ? 'free' : 'active');
   let daysLeft = null;
   let goldDaysLeft = null;
 
@@ -43,8 +48,9 @@ export async function checkAccess(uid, userInfo) {
     const expiry = data.silverExpiry.toDate ? data.silverExpiry.toDate() : new Date(data.silverExpiry);
     if (expiry < now) {
       isActive = false;
+      hasGallery = false;
       plan = 'free';
-      await updateDoc(ref, { isActive: false, plan: 'free' });
+      await updateDoc(ref, { isActive: false, hasGallery: false, plan: 'free', subscriptionStatus: 'expired', goldExpiry: null, updatedAt: serverTimestamp() });
     } else {
       daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
     }
@@ -56,7 +62,7 @@ export async function checkAccess(uid, userInfo) {
     if (expiry < now) {
       hasGallery = false;
       if (plan === 'gold') plan = 'silver';
-      await updateDoc(ref, { hasGallery: false, plan: isActive ? 'silver' : 'free' });
+      await updateDoc(ref, { hasGallery: false, plan: isActive ? 'silver' : 'free', goldExpiry: null, updatedAt: serverTimestamp() });
     } else {
       goldDaysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
     }
@@ -67,11 +73,12 @@ export async function checkAccess(uid, userInfo) {
     displayName: userInfo?.displayName || data.displayName || '',
     email: userInfo?.email || data.email || '',
     photoURL: userInfo?.photoURL || data.photoURL || '',
+    updatedAt: serverTimestamp(),
   });
 
   const patientCount = data.patientCount || 0;
   const allowed = isActive || patientCount < FREE_LIMIT;
-  return { allowed, isActive, hasGallery, patientCount, plan, daysLeft, goldDaysLeft };
+  return { allowed, isActive, hasGallery, patientCount, plan, billing: data.billing || null, paymentMethod: data.paymentMethod || null, subscriptionStatus, daysLeft, goldDaysLeft };
 }
 
 export async function canAddPatient(uid) {
