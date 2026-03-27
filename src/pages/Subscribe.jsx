@@ -4,6 +4,25 @@ import { useAuth } from '../hooks/useAuth';
 import { checkAccess } from '../services/db';
 import styles from './Subscribe.module.css';
 
+const BILLING_META = {
+  monthly: { label: 'Monthly', period: '/ month' },
+  semi: { label: '6 Months', period: '/ 6 months' },
+  yearly: { label: 'Yearly', period: '/ year' },
+};
+
+const PLAN_PRICES = {
+  silver: {
+    monthly: { current: '99 EGP', old: null },
+    semi: { current: '299 EGP', old: '600 EGP' },
+    yearly: { current: '365 EGP 🔥', old: '1200 EGP' },
+  },
+  gold: {
+    monthly: { current: '199 EGP', old: null },
+    semi: { current: '799 EGP', old: '1200 EGP' },
+    yearly: { current: '999 EGP 🔥', old: '2400 EGP' },
+  },
+};
+
 const PLANS = [
   {
     key: 'free',
@@ -45,6 +64,13 @@ const PLANS = [
   },
 ];
 
+function getCurrentPackage(access) {
+  if (!access) return 'free';
+  if (access.plan === 'gold' && access.billing) return `gold-${access.billing}`;
+  if (access.plan === 'silver' && access.billing) return `silver-${access.billing}`;
+  return access.plan || 'free';
+}
+
 export default function Subscribe() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -63,15 +89,18 @@ export default function Subscribe() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  const currentPackage = getCurrentPackage(access);
   const currentPlan = access?.plan || 'free';
+  const currentBilling = access?.billing || null;
+  const currentPackageLabel = currentPlan === 'free'
+    ? 'FREE'
+    : `${currentPlan.toUpperCase()} • ${BILLING_META[currentBilling]?.label || 'Custom'}`;
 
   const subscribeLink = useMemo(() => {
     const doctorName = user?.displayName || 'Doctor';
 
     return (planName) => {
-      const billingLabel =
-        billing === 'monthly' ? 'monthly' : billing === 'semi' ? '6 months' : 'yearly';
-
+      const billingLabel = BILLING_META[billing]?.label || 'Monthly';
       const text = encodeURIComponent(
         `Hi, I want a manual subscription for the ${planName} plan (${billingLabel}) for ${doctorName}.`
       );
@@ -85,27 +114,33 @@ export default function Subscribe() {
       return { current: '0 EGP', old: null, period: '/ forever' };
     }
 
-    if (planKey === 'silver') {
-      if (billing === 'monthly') return { current: '99 EGP', old: null, period: '/ month' };
-      if (billing === 'semi') return { current: '299 EGP', old: '600 EGP', period: '/ 6 months' };
-      return { current: '365 EGP 🔥', old: '1200 EGP', period: '/ year' };
-    }
-
-    if (billing === 'monthly') return { current: '199 EGP', old: null, period: '/ month' };
-    if (billing === 'semi') return { current: '799 EGP', old: '1200 EGP', period: '/ 6 months' };
-    return { current: '999 EGP 🔥', old: '2400 EGP', period: '/ year' };
+    const packagePrice = PLAN_PRICES[planKey]?.[billing];
+    return {
+      current: packagePrice?.current || '—',
+      old: packagePrice?.old || null,
+      period: BILLING_META[billing]?.period || '',
+    };
   };
 
   const getButtonText = (planKey) => {
-    if (planKey === currentPlan) return 'Current Plan';
+    const selectedPackage = `${planKey}-${billing}`;
+
     if (planKey === 'free') return 'Back to Dashboard';
+    if (selectedPackage === currentPackage) return 'Current Package';
     if (payingPlan === planKey) return 'Opening payment...';
-    if (planKey === 'silver') return 'Pay with Paymob';
-    return 'Pay with Paymob';
+
+    if (planKey === currentPlan && currentBilling && currentBilling !== billing) {
+      return `Upgrade to ${BILLING_META[billing]?.label}`;
+    }
+
+    if (currentPlan === 'free') return `Pay ${BILLING_META[billing]?.label}`;
+    return `Switch to ${planKey === 'gold' ? 'Gold' : 'Silver'} ${BILLING_META[billing]?.label}`;
   };
 
   const handlePlanClick = async (planKey) => {
-    if (planKey === currentPlan) return;
+    const selectedPackage = `${planKey}-${billing}`;
+
+    if (selectedPackage === currentPackage) return;
 
     if (planKey === 'free') {
       navigate('/');
@@ -152,21 +187,27 @@ export default function Subscribe() {
       <div className={`${styles.hero} motionHero`}>
         <div>
           <div className={styles.eyebrow}>Plans & Pricing</div>
-          <h1 className={styles.title}>Choose the plan that fits your clinic</h1>
+          <h1 className={styles.title}>Choose the plan and the duration that fit your clinic</h1>
           <p className={styles.sub}>
-            Pay online with Paymob or keep manual activation as a backup. Your clinic unlocks
-            automatically after successful payment.
+            Every plan is tied to a specific duration. Monthly, 6 months, and yearly are treated as separate subscriptions, so nobody can pay for one month and get one year.
           </p>
         </div>
 
         <div className={styles.currentBox}>
-          <div className={styles.currentLabel}>Current plan</div>
-          <div className={styles.currentValue}>{currentPlan.toUpperCase()}</div>
+          <div className={styles.currentLabel}>Current package</div>
+          <div className={styles.currentValue}>{currentPackageLabel}</div>
           <div className={styles.currentHint}>
             {currentPlan === 'free' && 'You can add up to 10 patients on the free plan.'}
-            {currentPlan === 'silver' && 'Unlimited patients are unlocked for your clinic.'}
-            {currentPlan === 'gold' && 'Gallery and WhatsApp are unlocked for your clinic.'}
+            {currentPlan === 'silver' && `Unlimited patients are unlocked${currentBilling ? ` on the ${BILLING_META[currentBilling]?.label} package` : ''}.`}
+            {currentPlan === 'gold' && `Gallery and WhatsApp are unlocked${currentBilling ? ` on the ${BILLING_META[currentBilling]?.label} package` : ''}.`}
           </div>
+          {(access?.daysLeft || access?.goldDaysLeft) ? (
+            <div className={styles.currentHint} style={{ marginTop: 8 }}>
+              {currentPlan === 'gold'
+                ? `Gold expires in ${access.goldDaysLeft ?? access.daysLeft} day(s).`
+                : `Silver expires in ${access.daysLeft} day(s).`}
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -180,8 +221,7 @@ export default function Subscribe() {
           inputMode="tel"
         />
         <div className={styles.checkoutHint}>
-          Use your Egyptian mobile number. Paymob is automatic. Manual payment stays available under
-          each paid plan.
+          Use your Egyptian mobile number. Paymob is automatic. Manual payment stays available under each paid package as a backup.
         </div>
         {error ? <div className={styles.errorBox}>{error}</div> : null}
       </div>
@@ -209,7 +249,8 @@ export default function Subscribe() {
 
       <div className={`${styles.grid} motionCard motionCardDelay3`}>
         {PLANS.map((plan) => {
-          const isCurrent = plan.key === currentPlan;
+          const selectedPackage = `${plan.key}-${billing}`;
+          const isCurrent = selectedPackage === currentPackage;
           const isSilver = plan.key === 'silver';
           const isGold = plan.key === 'gold';
           const priceData = getPriceData(plan.key);
@@ -228,6 +269,7 @@ export default function Subscribe() {
                 </div>
 
                 <h2 className={styles.planName}>{plan.name}</h2>
+                {plan.key !== 'free' ? <div className={styles.currentHint}>{BILLING_META[billing].label} package</div> : null}
 
                 <div className={styles.priceBlock}>
                   {priceData.old && <div className={styles.oldPrice}>{priceData.old}</div>}
@@ -256,12 +298,12 @@ export default function Subscribe() {
                 <button
                   className={`${styles.cta} ${isCurrent ? styles.currentBtn : ''} ${isSilver ? styles.silverBtn : ''} ${isGold ? styles.goldBtn : ''}`}
                   onClick={() => handlePlanClick(plan.key)}
-                  disabled={payingPlan === plan.key}
+                  disabled={payingPlan === plan.key || isCurrent}
                 >
                   {getButtonText(plan.key)}
                 </button>
 
-                {isPaidPlan && !isCurrent ? (
+                {isPaidPlan ? (
                   <button
                     className={styles.secondaryBtn}
                     onClick={() => handleManualClick(plan.key)}
