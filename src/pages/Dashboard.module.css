@@ -608,6 +608,22 @@
   cursor: pointer;
 }
 
+.lockedAction {
+  background: rgba(255, 184, 0, 0.08);
+  border-color: rgba(255, 184, 0, 0.2);
+}
+
+.lockedWhatsBtn {
+  background: rgba(255, 184, 0, 0.08);
+  border-color: rgba(255, 184, 0, 0.24);
+  color: #f6c453;
+}
+
+.lockedAction:hover,
+.lockedWhatsBtn:hover {
+  box-shadow: 0 10px 24px rgba(246, 196, 83, 0.12);
+}
+
 @keyframes growUp {
   from {
     height: 0;
