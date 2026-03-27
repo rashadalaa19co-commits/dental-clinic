@@ -30,11 +30,9 @@ const PLANS = [
     badge: 'Start Here',
     features: [
       { text: 'Up to 10 patients', available: true },
-      { text: 'Simple dashboard', available: true },
       { text: 'Appointments management', available: true },
-      { text: 'Up to 5 patients gallary', available: true },
-      { text: 'Smart Analysis', available: false },
-      { text: 'Gallery', available: false },
+      { text: 'Simple dashboard', available: true },
+      { text: 'Gallery preview (5 patients × 5 photos)', available: true },
       { text: 'WhatsApp reminders', available: false },
     ],
   },
@@ -47,7 +45,7 @@ const PLANS = [
       { text: 'Appointments management', available: true },
       { text: 'Full patient records', available: true },
       { text: 'Smart Analysis', available: true },
-      { text: 'Full Gallery', available: false },
+      { text: 'Gallery preview (5 patients × 5 photos)', available: true },
       { text: 'WhatsApp reminders', available: false },
     ],
   },
@@ -199,7 +197,7 @@ export default function Subscribe() {
           <div className={styles.currentLabel}>Current package</div>
           <div className={styles.currentValue}>{currentPackageLabel}</div>
           <div className={styles.currentHint}>
-            {currentPlan === 'free' && 'You can add up to 10 patients on the free plan.'}
+            {currentPlan === 'free' && 'You can add up to 10 patients, plus Gallery preview for 5 patients with up to 5 photos each.'}
             {currentPlan === 'silver' && `Unlimited patients are unlocked${currentBilling ? ` on the ${BILLING_META[currentBilling]?.label} package` : ''}.`}
             {currentPlan === 'gold' && `Gallery and WhatsApp are unlocked${currentBilling ? ` on the ${BILLING_META[currentBilling]?.label} package` : ''}.`}
           </div>
