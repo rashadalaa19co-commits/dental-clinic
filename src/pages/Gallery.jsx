@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, updatePatient, checkAccess } from '../services/db';
+import { useNavigate } from 'react-router-dom';
 
 const CLOUD_NAME = 'dvpbbawh2';
 const UPLOAD_PRESET = 'ntjnefxv';
@@ -14,8 +15,74 @@ const getPatientInitials = (name = '') => {
 
 const normalize = (value) => String(value || '').trim().toLowerCase();
 
+const FREE_GALLERY_PATIENT_LIMIT = 5;
+const FREE_GALLERY_PHOTO_LIMIT = 5;
+
+const getGalleryUsage = (list = []) => ({
+  patientsUsed: list.filter((patient) => (patient.photos || []).length > 0).length,
+  totalPhotos: list.reduce((sum, patient) => sum + (patient.photos || []).length, 0),
+});
+
+const getPatientUploadState = (patient, list, plan) => {
+  const photos = patient.photos || [];
+
+  if (plan === 'gold') {
+    return {
+      canUpload: true,
+      buttonLabel: 'Upload Photos',
+      helperText: `${photos.length} photo${photos.length !== 1 ? 's' : ''} stored`,
+      reason: '',
+      isUpgrade: false,
+    };
+  }
+
+  if (plan !== 'free') {
+    return {
+      canUpload: false,
+      buttonLabel: 'Upgrade',
+      helperText: 'Gallery is unlocked on Gold only',
+      reason: 'Gallery is unlocked on Gold only.',
+      isUpgrade: true,
+    };
+  }
+
+  const { patientsUsed } = getGalleryUsage(list);
+  const isNewGalleryPatient = photos.length === 0;
+  const patientLimitReached = isNewGalleryPatient && patientsUsed >= FREE_GALLERY_PATIENT_LIMIT;
+  const photoLimitReached = photos.length >= FREE_GALLERY_PHOTO_LIMIT;
+
+  if (patientLimitReached) {
+    return {
+      canUpload: false,
+      buttonLabel: 'Upgrade',
+      helperText: `Free plan reached ${FREE_GALLERY_PATIENT_LIMIT}/${FREE_GALLERY_PATIENT_LIMIT} gallery patients`,
+      reason: `Free plan allows photos for only ${FREE_GALLERY_PATIENT_LIMIT} patients. Upgrade to Gold for unlimited gallery access.`,
+      isUpgrade: true,
+    };
+  }
+
+  if (photoLimitReached) {
+    return {
+      canUpload: false,
+      buttonLabel: 'Upgrade',
+      helperText: `Free plan reached ${FREE_GALLERY_PHOTO_LIMIT}/${FREE_GALLERY_PHOTO_LIMIT} photos for this patient`,
+      reason: `Free plan allows only ${FREE_GALLERY_PHOTO_LIMIT} photos per patient. Upgrade to Gold for unlimited uploads.`,
+      isUpgrade: true,
+    };
+  }
+
+  return {
+    canUpload: true,
+    buttonLabel: 'Upload Photos',
+    helperText: `${photos.length}/${FREE_GALLERY_PHOTO_LIMIT} photos for this patient`,
+    reason: '',
+    isUpgrade: false,
+  };
+};
+
 export default function Gallery() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -58,11 +125,31 @@ export default function Gallery() {
   const handleUpload = async (e, patient) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+
+    const latestPatients = await getPatients(user.uid);
+    const freshPatient = latestPatients.find((item) => item.id === patient.id) || patient;
+    const uploadState = getPatientUploadState(freshPatient, latestPatients, access?.plan);
+
+    if (!uploadState.canUpload) {
+      alert(uploadState.reason);
+      e.target.value = '';
+      return;
+    }
+
+    if (access?.plan === 'free') {
+      const remainingSlots = FREE_GALLERY_PHOTO_LIMIT - (freshPatient.photos || []).length;
+      if (files.length > remainingSlots) {
+        alert(`Free plan allows only ${remainingSlots} more photo${remainingSlots !== 1 ? 's' : ''} for this patient.`);
+        e.target.value = '';
+        return;
+      }
+    }
+
     setUploadingId(patient.id);
     try {
       const urls = await Promise.all(files.map(uploadToCloudinary));
-      const current = patient.photos || [];
-      const updated = { ...patient, photos: [...current, ...urls] };
+      const current = freshPatient.photos || [];
+      const updated = { ...freshPatient, photos: [...current, ...urls] };
       await updatePatient(user.uid, patient.id, updated);
       const refreshed = await getPatients(user.uid);
       setPatients(refreshed);
@@ -131,7 +218,11 @@ export default function Gallery() {
 
   const patientsWithPhotos = useMemo(() => patients.filter((p) => (p.photos || []).length > 0), [patients]);
   const filteredPatientsWithPhotos = filteredPatients.filter((p) => (p.photos || []).length > 0);
-  const totalPhotos = patientsWithPhotos.reduce((a, p) => a + (p.photos || []).length, 0);
+  const galleryUsage = useMemo(() => getGalleryUsage(patients), [patients]);
+  const totalPhotos = galleryUsage.totalPhotos;
+  const isFreePlan = access?.plan === 'free';
+  const isGoldPlan = access?.plan === 'gold';
+  const isSilverPlan = access?.plan === 'silver';
 
   const suggestions = useMemo(() => {
     if (!searchValue) return [];
@@ -167,7 +258,7 @@ export default function Gallery() {
     );
   }
 
-  if (!access?.hasGallery) {
+  if (isSilverPlan) {
     return (
       <div className="motionPage motionHero" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', gap: 16, textAlign: 'center', padding: '20px' }}>
         <div style={{ fontSize: 64 }}>📸</div>
@@ -175,7 +266,7 @@ export default function Gallery() {
           Gold Plan Feature
         </div>
         <p style={{ color: 'var(--muted)', fontSize: 15, maxWidth: 400 }}>
-          Upgrade to Gold to unlock the Gallery and upload unlimited patient photos!
+          Silver does not include Gallery. Upgrade to Gold to unlock unlimited patient photos! 
         </p>
         <div style={{ background: 'var(--surface)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 16, padding: '24px 32px', maxWidth: 380, width: '100%' }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>🥇 Gold Plan</div>
@@ -222,27 +313,75 @@ export default function Gallery() {
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 22, fontWeight: 800 }}>{p.name}</h2>
             <p style={{ color: 'var(--muted)', fontSize: 13 }}>{(p.photos || []).length} photos · {p.procedure || '-'}</p>
+            {isFreePlan ? (
+              <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>
+                Free preview: {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} gallery patients · {(p.photos || []).length}/{FREE_GALLERY_PHOTO_LIMIT} photos for this patient
+              </p>
+            ) : null }
           </div>
           <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => handleUpload(e, p)} style={{ display: 'none' }} />
-          <button
-            onClick={() => fileRef.current.click()}
-            disabled={uploadingId === p.id}
-            style={{ padding: '9px 20px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.6 : 1 }}
-          >
-            {uploadingId === p.id ? '⏳ Uploading...' : '📤 Upload Photos'}
-          </button>
+          {(() => {
+            const uploadState = getPatientUploadState(p, patients, access?.plan);
+            const disabled = uploadingId === p.id || !uploadState.canUpload;
+            return (
+              <button
+                onClick={() => {
+                  if (!uploadState.canUpload) {
+                    navigate('/subscribe');
+                    return;
+                  }
+                  fileRef.current?.click();
+                }}
+                disabled={uploadingId === p.id}
+                style={{
+                  padding: '9px 20px',
+                  background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'var(--accent)',
+                  color: uploadState.isUpgrade ? '#f7c766' : '#000',
+                  border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.42)' : 'none',
+                  borderRadius: 8,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: disabled ? 'pointer' : 'pointer',
+                  opacity: uploadingId === p.id ? 0.6 : 1,
+                }}
+                title={uploadState.helperText}
+              >
+                {uploadingId === p.id ? '⏳ Uploading...' : uploadState.isUpgrade ? '🥇 Upgrade' : '📤 Upload Photos'}
+              </button>
+            );
+          })()}
         </div>
 
         {(p.photos || []).length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '40vh', color: 'var(--muted)', gap: 12, background: 'var(--surface)', borderRadius: 12, border: '2px dashed var(--border)' }}>
             <div style={{ fontSize: 48 }}>📷</div>
             <p style={{ fontSize: 16 }}>No photos yet</p>
-            <button
-              onClick={() => fileRef.current.click()}
-              style={{ padding: '10px 24px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Upload First Photo
-            </button>
+            {(() => {
+              const uploadState = getPatientUploadState(p, patients, access?.plan);
+              return (
+                <button
+                  onClick={() => {
+                    if (!uploadState.canUpload) {
+                      navigate('/subscribe');
+                      return;
+                    }
+                    fileRef.current?.click();
+                  }}
+                  style={{
+                    padding: '10px 24px',
+                    background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'var(--accent)',
+                    color: uploadState.isUpgrade ? '#f7c766' : '#000',
+                    border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.42)' : 'none',
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {uploadState.isUpgrade ? '🥇 Upgrade to Gold' : 'Upload First Photo'}
+                </button>
+              );
+            })()}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
@@ -266,15 +405,38 @@ export default function Gallery() {
                 </button>
               </div>
             ))}
-            <div
-              onClick={() => fileRef.current.click()}
-              style={{ borderRadius: 12, border: '2px dashed var(--border)', aspectRatio: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--muted)', gap: 8, transition: 'all 0.2s' }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.color = 'var(--accent)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)'; }}
-            >
-              <div style={{ fontSize: 32 }}>+</div>
-              <div style={{ fontSize: 13 }}>Add Photo</div>
-            </div>
+            {(() => {
+              const uploadState = getPatientUploadState(p, patients, access?.plan);
+              return (
+                <div
+                  onClick={() => {
+                    if (!uploadState.canUpload) {
+                      navigate('/subscribe');
+                      return;
+                    }
+                    fileRef.current?.click();
+                  }}
+                  style={{
+                    borderRadius: 12,
+                    border: `2px dashed ${uploadState.isUpgrade ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
+                    aspectRatio: '1',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: uploadState.isUpgrade ? '#f7c766' : 'var(--muted)',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                    background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.03))' : 'transparent',
+                  }}
+                  title={uploadState.helperText}
+                >
+                  <div style={{ fontSize: 32 }}>{uploadState.isUpgrade ? '🥇' : '+'}</div>
+                  <div style={{ fontSize: 13 }}>{uploadState.isUpgrade ? 'Upgrade to add more' : 'Add Photo'}</div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -304,10 +466,32 @@ export default function Gallery() {
           <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>
             {patientsWithPhotos.length} patients · {totalPhotos} photos
           </p>
+          {isFreePlan ? (
+            <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>
+              Free preview: {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} gallery patients · up to {FREE_GALLERY_PHOTO_LIMIT} photos per patient
+            </p>
+          ) : null}
         </div>
       </div>
 
       <div className="motionCard motionCardDelay1" style={{ marginBottom: 24, position: 'relative', zIndex: 12 }}>
+        {isFreePlan ? (
+          <div style={{ marginBottom: 14, background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(251,191,36,0.04))', border: '1px solid rgba(245,158,11,0.22)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: '#f7c766' }}>Free Gallery Preview</div>
+              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
+                {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} patients used · up to {FREE_GALLERY_PHOTO_LIMIT} photos per patient
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/subscribe')}
+              style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(245,158,11,0.34)', background: 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))', color: '#f7c766', fontWeight: 800, cursor: 'pointer' }}
+            >
+              Upgrade to Gold
+            </button>
+          </div>
+        ) : null}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 520, minWidth: 260 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px', minHeight: 50 }}>
@@ -423,7 +607,7 @@ export default function Gallery() {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {filteredPatientsWithPhotos.map((p) => (
-              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} />
+              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} onUpgrade={() => navigate('/subscribe')} />
             ))}
           </div>
         </div>
@@ -481,7 +665,7 @@ export default function Gallery() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {filteredPatients.map((p) => (
-              <PatientCard key={p.id} p={p} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} />
+              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} onUpgrade={() => navigate('/subscribe')} />
             ))}
           </div>
         )}
@@ -490,8 +674,9 @@ export default function Gallery() {
   );
 }
 
-function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
+function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileRefs, onUpgrade }) {
   const photos = p.photos || [];
+  const uploadState = getPatientUploadState(p, patients, plan);
 
   return (
     <div
@@ -534,6 +719,11 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
             <span style={{ opacity: 0.5 }}>•</span>
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, maxWidth: '100%' }}>{p.procedure || '-'}</span>
           </div>
+          {plan === 'free' ? (
+            <div style={{ fontSize: 11, color: uploadState.isUpgrade ? '#f7c766' : 'var(--muted)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {uploadState.helperText}
+            </div>
+          ) : null}
         </div>
         <div>
           <input
@@ -547,12 +737,32 @@ function PatientCard({ p, onSelect, onUpload, uploadingId, fileRefs }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
+              if (!uploadState.canUpload) {
+                onUpgrade?.();
+                return;
+              }
               fileRefs.current[p.id]?.click();
             }}
             disabled={uploadingId === p.id}
-            style={{ width: 36, height: 36, background: 'rgba(0,212,255,0.1)', color: 'var(--accent)', border: '1px solid rgba(0,212,255,0.3)', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', opacity: uploadingId === p.id ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+            title={uploadState.helperText}
+            style={{
+              width: 44,
+              height: 36,
+              background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'rgba(0,212,255,0.1)',
+              color: uploadState.isUpgrade ? '#f7c766' : 'var(--accent)',
+              border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.36)' : '1px solid rgba(0,212,255,0.3)',
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              opacity: uploadingId === p.id ? 0.5 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
           >
-            {uploadingId === p.id ? '⏳' : '📤'}
+            {uploadingId === p.id ? '⏳' : uploadState.isUpgrade ? '🥇' : '📤'}
           </button>
         </div>
       </div>
