@@ -51,6 +51,9 @@ export default function Subscribe() {
   const [access, setAccess] = useState(null);
   const [loading, setLoading] = useState(true);
   const [billing, setBilling] = useState('monthly');
+  const [phone, setPhone] = useState('');
+  const [payingPlan, setPayingPlan] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -64,13 +67,15 @@ export default function Subscribe() {
 
   const subscribeLink = useMemo(() => {
     const doctorName = user?.displayName || 'Doctor';
+
     return (planName) => {
       const billingLabel =
         billing === 'monthly' ? 'monthly' : billing === 'semi' ? '6 months' : 'yearly';
 
       const text = encodeURIComponent(
-        `Hi, I want to subscribe to the ${planName} plan (${billingLabel}) for ${doctorName}.`
+        `Hi, I want a manual subscription for the ${planName} plan (${billingLabel}) for ${doctorName}.`
       );
+
       return `https://wa.me/201010562664?text=${text}`;
     };
   }, [user, billing]);
@@ -94,16 +99,49 @@ export default function Subscribe() {
   const getButtonText = (planKey) => {
     if (planKey === currentPlan) return 'Current Plan';
     if (planKey === 'free') return 'Back to Dashboard';
-    if (planKey === 'silver') return 'Choose Silver';
-    return 'Choose Gold';
+    if (payingPlan === planKey) return 'Opening payment...';
+    if (planKey === 'silver') return 'Pay with Paymob';
+    return 'Pay with Paymob';
   };
 
-  const handlePlanClick = (planKey) => {
+  const handlePlanClick = async (planKey) => {
     if (planKey === currentPlan) return;
+
     if (planKey === 'free') {
       navigate('/');
       return;
     }
+
+    setError('');
+    setPayingPlan(planKey);
+
+    try {
+      const idToken = await user.getIdToken();
+      const response = await fetch('/api/paymob/create-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          plan: planKey,
+          billing,
+          phone,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Failed to start payment');
+      }
+
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err.message || 'Failed to start payment');
+      setPayingPlan('');
+    }
+  };
+
+  const handleManualClick = (planKey) => {
     window.open(subscribeLink(planKey), '_blank');
   };
 
@@ -116,7 +154,8 @@ export default function Subscribe() {
           <div className={styles.eyebrow}>Plans & Pricing</div>
           <h1 className={styles.title}>Choose the plan that fits your clinic</h1>
           <p className={styles.sub}>
-            Start free, upgrade anytime, and pick the billing cycle that works best for your clinic.
+            Pay online with Paymob or keep manual activation as a backup. Your clinic unlocks
+            automatically after successful payment.
           </p>
         </div>
 
@@ -131,7 +170,23 @@ export default function Subscribe() {
         </div>
       </div>
 
-      <div className={`${styles.toggleWrap} motionCard motionCardDelay1`}>
+      <div className={`${styles.checkoutBox} motionCard motionCardDelay1`}>
+        <div className={styles.inputLabel}>Phone number for Paymob checkout</div>
+        <input
+          className={styles.phoneInput}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          placeholder="01xxxxxxxxx"
+          inputMode="tel"
+        />
+        <div className={styles.checkoutHint}>
+          Use your Egyptian mobile number. Paymob is automatic. Manual payment stays available under
+          each paid plan.
+        </div>
+        {error ? <div className={styles.errorBox}>{error}</div> : null}
+      </div>
+
+      <div className={`${styles.toggleWrap} motionCard motionCardDelay2`}>
         <button
           className={`${styles.toggleBtn} ${billing === 'monthly' ? styles.toggleActive : ''}`}
           onClick={() => setBilling('monthly')}
@@ -152,12 +207,13 @@ export default function Subscribe() {
         </button>
       </div>
 
-      <div className={`${styles.grid} motionCard motionCardDelay2`}>
+      <div className={`${styles.grid} motionCard motionCardDelay3`}>
         {PLANS.map((plan) => {
           const isCurrent = plan.key === currentPlan;
           const isSilver = plan.key === 'silver';
           const isGold = plan.key === 'gold';
           const priceData = getPriceData(plan.key);
+          const isPaidPlan = plan.key !== 'free';
 
           return (
             <div
@@ -196,12 +252,25 @@ export default function Subscribe() {
                 ))}
               </ul>
 
-              <button
-                className={`${styles.cta} ${isCurrent ? styles.currentBtn : ''} ${isSilver ? styles.silverBtn : ''} ${isGold ? styles.goldBtn : ''}`}
-                onClick={() => handlePlanClick(plan.key)}
-              >
-                {getButtonText(plan.key)}
-              </button>
+              <div className={styles.actionsWrap}>
+                <button
+                  className={`${styles.cta} ${isCurrent ? styles.currentBtn : ''} ${isSilver ? styles.silverBtn : ''} ${isGold ? styles.goldBtn : ''}`}
+                  onClick={() => handlePlanClick(plan.key)}
+                  disabled={payingPlan === plan.key}
+                >
+                  {getButtonText(plan.key)}
+                </button>
+
+                {isPaidPlan && !isCurrent ? (
+                  <button
+                    className={styles.secondaryBtn}
+                    onClick={() => handleManualClick(plan.key)}
+                    type="button"
+                  >
+                    Manual payment / Contact us
+                  </button>
+                ) : null}
+              </div>
             </div>
           );
         })}
