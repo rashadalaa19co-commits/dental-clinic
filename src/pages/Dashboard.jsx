@@ -256,7 +256,7 @@ export default function Dashboard() {
                 onClick={access?.plan === 'gold' ? sendTodayReminders : () => nav('/subscribe')}
               >
                 <MessageCircle size={16} />
-                {access?.plan === 'gold' ? 'Send Reminders' : 'Unlock WhatsApp'}
+                {access?.plan === 'gold' ? 'HI' : 'Unlock WhatsApp'}
               </button>
             </div>
 
@@ -469,11 +469,11 @@ export default function Dashboard() {
               <button
                 type="button"
                 className={styles.toolCard}
-                onClick={access?.plan === 'gold' ? sendTodayReminders : () => nav('/subscribe')}
+                onClick={access?.plan === 'gold' ?  : () => nav('/subscribe')}
               >
                 <div>
                   <span>WhatsApp</span>
-                  <strong>{access?.plan === 'gold' ? 'Send reminders' : 'Upgrade to unlock'}</strong>
+                  <strong>{access?.plan === 'gold' ? '' : 'Upgrade to unlock'}</strong>
                 </div>
                 {access?.plan === 'gold' ? <MessageCircle size={18} /> : <Lock size={18} />}
               </button>
