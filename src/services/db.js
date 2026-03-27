@@ -30,39 +30,57 @@ export async function checkAccess(uid, userInfo) {
       subscriptionStatus: 'free',
       updatedAt: serverTimestamp(),
     });
-    return { allowed: true, isActive: false, hasGallery: false, patientCount: 0, plan: 'free', daysLeft: null, goldDaysLeft: null };
+    return { allowed: true, isActive: false, hasGallery: false, patientCount: 0, plan: 'free', daysLeft: null, goldDaysLeft: null, billing: null };
   }
 
   const data = snap.data();
 
-  // Check silver expiry — if one-time purchase, silverExpiry = null means lifetime
   let isActive = data.isActive || false;
   let hasGallery = data.hasGallery || false;
   let plan = data.plan || 'free';
-  const subscriptionStatus = data.subscriptionStatus || (plan === 'free' ? 'free' : 'active');
+  let billing = data.billing || null;
+  let paymentMethod = data.paymentMethod || null;
+  let subscriptionStatus = data.subscriptionStatus || (plan === 'free' ? 'free' : 'active');
   let daysLeft = null;
   let goldDaysLeft = null;
 
-  // Check silver expiry (monthly silver)
   if (isActive && data.silverExpiry) {
     const expiry = data.silverExpiry.toDate ? data.silverExpiry.toDate() : new Date(data.silverExpiry);
     if (expiry < now) {
       isActive = false;
       hasGallery = false;
       plan = 'free';
-      await updateDoc(ref, { isActive: false, hasGallery: false, plan: 'free', subscriptionStatus: 'expired', goldExpiry: null, updatedAt: serverTimestamp() });
+      billing = null;
+      paymentMethod = null;
+      subscriptionStatus = 'expired';
+      await updateDoc(ref, {
+        isActive: false,
+        hasGallery: false,
+        plan: 'free',
+        billing: null,
+        paymentMethod: null,
+        subscriptionStatus: 'expired',
+        silverExpiry: null,
+        goldExpiry: null,
+        updatedAt: serverTimestamp(),
+      });
     } else {
       daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
     }
   }
 
-  // Check gold expiry (monthly gold)
   if (hasGallery && data.goldExpiry) {
     const expiry = data.goldExpiry.toDate ? data.goldExpiry.toDate() : new Date(data.goldExpiry);
     if (expiry < now) {
       hasGallery = false;
-      if (plan === 'gold') plan = 'silver';
-      await updateDoc(ref, { hasGallery: false, plan: isActive ? 'silver' : 'free', goldExpiry: null, updatedAt: serverTimestamp() });
+      plan = isActive ? 'silver' : 'free';
+      subscriptionStatus = isActive ? 'active' : 'expired';
+      await updateDoc(ref, {
+        hasGallery: false,
+        plan,
+        goldExpiry: null,
+        updatedAt: serverTimestamp(),
+      });
     } else {
       goldDaysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
     }
@@ -78,7 +96,7 @@ export async function checkAccess(uid, userInfo) {
 
   const patientCount = data.patientCount || 0;
   const allowed = isActive || patientCount < FREE_LIMIT;
-  return { allowed, isActive, hasGallery, patientCount, plan, billing: data.billing || null, paymentMethod: data.paymentMethod || null, subscriptionStatus, daysLeft, goldDaysLeft };
+  return { allowed, isActive, hasGallery, patientCount, plan, billing, paymentMethod, subscriptionStatus, daysLeft, goldDaysLeft };
 }
 
 export async function canAddPatient(uid) {
