@@ -1,11 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X, FolderOpen, Images } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, updatePatient, checkAccess } from '../services/db';
 import { useNavigate } from 'react-router-dom';
 
 const CLOUD_NAME = 'dvpbbawh2';
 const UPLOAD_PRESET = 'ntjnefxv';
+
+const FREE_GALLERY_PATIENT_LIMIT = 5;
+const FREE_GALLERY_PHOTO_LIMIT = 5;
+
+const VISIT_CONFIGS = [
+  { key: 'endoVisits', label: 'Endo', icon: '🔵', getTitle: (row = {}) => row.toothName || row.diagnosis || 'Visit' },
+  { key: 'operativeVisits', label: 'Operative', icon: '🦷', getTitle: (row = {}) => row.toothName || row.classType || 'Visit' },
+  { key: 'surgeryVisits', label: 'Surgery', icon: '🩺', getTitle: (row = {}) => row.toothName || row.toothNum || row.typeOfEx || 'Visit' },
+  { key: 'prothVisits', label: 'Fixed', icon: '👑', getTitle: (row = {}) => row.toothName || row.teeth || row.labStage || 'Visit' },
+];
 
 const getPatientInitials = (name = '') => {
   const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
@@ -15,21 +25,106 @@ const getPatientInitials = (name = '') => {
 
 const normalize = (value) => String(value || '').trim().toLowerCase();
 
-const FREE_GALLERY_PATIENT_LIMIT = 5;
-const FREE_GALLERY_PHOTO_LIMIT = 5;
+const toSortableTime = (value) => {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+};
+
+const formatVisitDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+};
+
+const getPhotoItems = (patient = {}) =>
+  (patient.photos || [])
+    .map((photo, index) => {
+      if (typeof photo === 'string') {
+        return {
+          id: `legacy_${index}`,
+          url: photo,
+          visitId: null,
+          visitLabel: '',
+          visitType: '',
+          visitDate: '',
+          createdAt: '',
+          isLegacy: true,
+        };
+      }
+
+      return {
+        id: photo.id || `photo_${index}`,
+        url: photo.url || photo.secure_url || '',
+        visitId: photo.visitId || null,
+        visitLabel: photo.visitLabel || '',
+        visitType: photo.visitType || '',
+        visitDate: photo.visitDate || '',
+        createdAt: photo.createdAt || '',
+        isLegacy: false,
+      };
+    })
+    .filter((photo) => photo.url);
+
+const getVisitOptions = (patient = {}) => {
+  const visits = VISIT_CONFIGS.flatMap((config) =>
+    (patient[config.key] || []).map((row, index) => {
+      const date = row?.date || '';
+      const title = config.getTitle(row);
+      const datePart = formatVisitDate(date);
+      const label = `${config.icon} ${config.label}${title ? ` • ${title}` : ''}${datePart ? ` • ${datePart}` : ''}`;
+
+      return {
+        id: `${config.key}_${index}_${row?.date || title || 'visit'}`,
+        key: config.key,
+        label,
+        title,
+        date,
+        sortTime: toSortableTime(date),
+      };
+    })
+  );
+
+  return visits.sort((a, b) => b.sortTime - a.sortTime);
+};
+
+const getLatestVisitOption = (patient = {}) => getVisitOptions(patient)[0] || null;
+
+const getCoverPhotos = (patient = {}) => {
+  const photos = getPhotoItems(patient);
+  if (!photos.length) return [];
+
+  const latestVisit = getLatestVisitOption(patient);
+  if (latestVisit) {
+    const visitPhotos = photos.filter((photo) => photo.visitId === latestVisit.id);
+    if (visitPhotos.length) return visitPhotos;
+  }
+
+  const groupedVisitPhotos = [...photos]
+    .filter((photo) => photo.visitId)
+    .sort((a, b) => {
+      const visitDiff = toSortableTime(b.visitDate) - toSortableTime(a.visitDate);
+      if (visitDiff !== 0) return visitDiff;
+      return toSortableTime(b.createdAt) - toSortableTime(a.createdAt);
+    });
+
+  if (groupedVisitPhotos.length) return groupedVisitPhotos;
+  return photos;
+};
 
 const getGalleryUsage = (list = []) => ({
-  patientsUsed: list.filter((patient) => (patient.photos || []).length > 0).length,
-  totalPhotos: list.reduce((sum, patient) => sum + (patient.photos || []).length, 0),
+  patientsUsed: list.filter((patient) => getPhotoItems(patient).length > 0).length,
+  totalPhotos: list.reduce((sum, patient) => sum + getPhotoItems(patient).length, 0),
 });
 
 const getPatientUploadState = (patient, list, plan) => {
-  const photos = patient.photos || [];
+  const photos = getPhotoItems(patient);
 
   if (plan === 'gold') {
     return {
       canUpload: true,
-      buttonLabel: 'Upload Photos',
+      buttonLabel: 'Add Visit',
       helperText: `${photos.length} photo${photos.length !== 1 ? 's' : ''} stored`,
       reason: '',
       isUpgrade: false,
@@ -73,11 +168,38 @@ const getPatientUploadState = (patient, list, plan) => {
 
   return {
     canUpload: true,
-    buttonLabel: 'Upload Photos',
+    buttonLabel: 'Add Visit',
     helperText: `${photos.length}/${FREE_GALLERY_PHOTO_LIMIT} photos for this patient`,
     reason: '',
     isUpgrade: false,
   };
+};
+
+const groupPhotosByVisit = (patient = {}) => {
+  const photos = getPhotoItems(patient);
+  const latestVisit = getLatestVisitOption(patient);
+  const groupsMap = new Map();
+
+  photos.forEach((photo) => {
+    const groupKey = photo.visitId || `ungrouped_${photo.id}`;
+    if (!groupsMap.has(groupKey)) {
+      groupsMap.set(groupKey, {
+        key: groupKey,
+        visitId: photo.visitId || null,
+        title: photo.visitLabel || 'General photos',
+        visitDate: photo.visitDate || '',
+        isLatest: latestVisit ? latestVisit.id === photo.visitId : false,
+        items: [],
+      });
+    }
+    groupsMap.get(groupKey).items.push(photo);
+  });
+
+  return [...groupsMap.values()].sort((a, b) => {
+    const visitDiff = toSortableTime(b.visitDate) - toSortableTime(a.visitDate);
+    if (visitDiff !== 0) return visitDiff;
+    return b.items.length - a.items.length;
+  });
 };
 
 export default function Gallery() {
@@ -93,22 +215,27 @@ export default function Gallery() {
   const [lightbox, setLightbox] = useState(null);
   const [uploadingId, setUploadingId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [visitPickerOpen, setVisitPickerOpen] = useState(false);
+  const [selectedVisitId, setSelectedVisitId] = useState('');
+  const [pendingUploadVisit, setPendingUploadVisit] = useState(null);
   const [filters, setFilters] = useState({
     photoMode: 'all',
     status: 'all',
     procedure: 'all',
   });
   const fileRef = useRef(null);
-  const fileRefs = useRef({});
+
+  const loadData = async () => {
+    if (!user) return;
+    const [p, acc] = await Promise.all([getPatients(user.uid), checkAccess(user.uid)]);
+    setPatients(p);
+    setAccess(acc);
+    return p;
+  };
 
   useEffect(() => {
     if (!user) return;
-    Promise.all([getPatients(user.uid), checkAccess(user.uid)])
-      .then(([p, acc]) => {
-        setPatients(p);
-        setAccess(acc);
-      })
-      .finally(() => setLoading(false));
+    loadData().finally(() => setLoading(false));
   }, [user]);
 
   const uploadToCloudinary = async (file) => {
@@ -122,9 +249,15 @@ export default function Gallery() {
     return data.secure_url;
   };
 
-  const handleUpload = async (e, patient) => {
+  const handleUpload = async (e, patient, visitMeta = pendingUploadVisit) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+
+    if (!visitMeta) {
+      alert('Please choose a visit first.');
+      e.target.value = '';
+      return;
+    }
 
     const latestPatients = await getPatients(user.uid);
     const freshPatient = latestPatients.find((item) => item.id === patient.id) || patient;
@@ -137,7 +270,7 @@ export default function Gallery() {
     }
 
     if (access?.plan === 'free') {
-      const remainingSlots = FREE_GALLERY_PHOTO_LIMIT - (freshPatient.photos || []).length;
+      const remainingSlots = FREE_GALLERY_PHOTO_LIMIT - getPhotoItems(freshPatient).length;
       if (files.length > remainingSlots) {
         alert(`Free plan allows only ${remainingSlots} more photo${remainingSlots !== 1 ? 's' : ''} for this patient.`);
         e.target.value = '';
@@ -149,13 +282,26 @@ export default function Gallery() {
     try {
       const urls = await Promise.all(files.map(uploadToCloudinary));
       const current = freshPatient.photos || [];
-      const updated = { ...freshPatient, photos: [...current, ...urls] };
+      const createdAt = new Date().toISOString();
+      const appended = urls.map((url, index) => ({
+        id: `${visitMeta.id}_${createdAt}_${index}`,
+        url,
+        visitId: visitMeta.id,
+        visitLabel: visitMeta.label,
+        visitType: visitMeta.key,
+        visitDate: visitMeta.date || '',
+        createdAt,
+      }));
+      const updated = { ...freshPatient, photos: [...current, ...appended] };
       await updatePatient(user.uid, patient.id, updated);
       const refreshed = await getPatients(user.uid);
       setPatients(refreshed);
       if (selectedPatient?.id === patient.id) {
-        setSelectedPatient(refreshed.find((p) => p.id === patient.id));
+        setSelectedPatient(refreshed.find((p) => p.id === patient.id) || null);
       }
+      setVisitPickerOpen(false);
+      setSelectedVisitId('');
+      setPendingUploadVisit(null);
     } finally {
       setUploadingId(null);
       e.target.value = '';
@@ -163,6 +309,7 @@ export default function Gallery() {
   };
 
   const handleDeletePhoto = async (patient, idx) => {
+    if (idx < 0) return;
     if (!confirm('Delete this photo?')) return;
     const current = [...(patient.photos || [])];
     current.splice(idx, 1);
@@ -188,20 +335,13 @@ export default function Gallery() {
 
   const matchesSearch = (patient) => {
     if (!searchValue) return true;
-    return [
-      patient.name,
-      patient.phone,
-      patient.status,
-      patient.procedure,
-      patient.alert,
-      patient.patientType,
-    ]
+    return [patient.name, patient.phone, patient.status, patient.procedure, patient.alert, patient.patientType]
       .filter(Boolean)
       .some((value) => normalize(value).includes(searchValue));
   };
 
   const matchesFilters = (patient) => {
-    const photosCount = (patient.photos || []).length;
+    const photosCount = getPhotoItems(patient).length;
     const statusMatch = filters.status === 'all' || normalize(patient.status) === normalize(filters.status);
     const procedureMatch = filters.procedure === 'all' || normalize(patient.procedure) === normalize(filters.procedure);
     const photoMatch =
@@ -212,29 +352,18 @@ export default function Gallery() {
     return statusMatch && procedureMatch && photoMatch;
   };
 
-  const filteredPatients = useMemo(() => {
-    return patients.filter((patient) => matchesSearch(patient) && matchesFilters(patient));
-  }, [patients, searchValue, filters]);
-
-  const patientsWithPhotos = useMemo(() => patients.filter((p) => (p.photos || []).length > 0), [patients]);
-  const filteredPatientsWithPhotos = filteredPatients.filter((p) => (p.photos || []).length > 0);
+  const filteredPatients = useMemo(() => patients.filter((patient) => matchesSearch(patient) && matchesFilters(patient)), [patients, searchValue, filters]);
+  const filteredPatientsWithPhotos = filteredPatients.filter((p) => getPhotoItems(p).length > 0);
   const galleryUsage = useMemo(() => getGalleryUsage(patients), [patients]);
   const totalPhotos = galleryUsage.totalPhotos;
   const isFreePlan = access?.plan === 'free';
-  const isGoldPlan = access?.plan === 'gold';
   const isSilverPlan = access?.plan === 'silver';
 
   const suggestions = useMemo(() => {
     if (!searchValue) return [];
 
     return patients
-      .filter((p) => {
-        const haystack = [p.name, p.phone, p.status, p.procedure, p.alert, p.patientType]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        return haystack.includes(searchValue);
-      })
+      .filter((p) => [p.name, p.phone, p.status, p.procedure, p.alert, p.patientType].filter(Boolean).join(' ').toLowerCase().includes(searchValue))
       .slice(0, 5);
   }, [patients, searchValue]);
 
@@ -248,14 +377,45 @@ export default function Gallery() {
     setShowSuggestions(false);
     setSearch(patient.name || '');
     setSelectedPatient(patient);
+    setVisitPickerOpen(false);
+    setSelectedVisitId('');
+    setPendingUploadVisit(null);
+  };
+
+  const startAddVisit = (patient) => {
+    const uploadState = getPatientUploadState(patient, patients, access?.plan);
+    if (!uploadState.canUpload) {
+      navigate('/subscribe');
+      return;
+    }
+
+    const options = getVisitOptions(patient);
+    if (!options.length) {
+      alert('No visits found yet for this patient. Add a visit first inside Patient File.');
+      return;
+    }
+
+    setSelectedPatient(patient);
+    setVisitPickerOpen(true);
+    setSelectedVisitId(options[0].id);
+    setPendingUploadVisit(options[0]);
+  };
+
+  const continueVisitUpload = () => {
+    const patient = patients.find((item) => item.id === selectedPatient?.id) || selectedPatient;
+    if (!patient) return;
+    const options = getVisitOptions(patient);
+    const chosenVisit = options.find((option) => option.id === selectedVisitId);
+    if (!chosenVisit) {
+      alert('Please select a visit first.');
+      return;
+    }
+    setPendingUploadVisit(chosenVisit);
+    fileRef.current?.click();
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>
-        Loading...
-      </div>
-    );
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'var(--muted)' }}>Loading...</div>;
   }
 
   if (isSilverPlan) {
@@ -266,7 +426,7 @@ export default function Gallery() {
           Gold Plan Feature
         </div>
         <p style={{ color: 'var(--muted)', fontSize: 15, maxWidth: 400 }}>
-          Silver does not include Gallery. Upgrade to Gold to unlock unlimited patient photos! 
+          Silver does not include Gallery. Upgrade to Gold to unlock unlimited patient photos!
         </p>
         <div style={{ background: 'var(--surface)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 16, padding: '24px 32px', maxWidth: 380, width: '100%' }}>
           <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>🥇 Gold Plan</div>
@@ -301,37 +461,39 @@ export default function Gallery() {
 
   if (selectedPatient) {
     const p = patients.find((x) => x.id === selectedPatient.id) || selectedPatient;
+    const photoItems = getPhotoItems(p);
+    const photoGroups = groupPhotosByVisit(p);
+    const visitOptions = getVisitOptions(p);
+
     return (
       <div className="motionPage">
         <div className="motionHero" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
           <button
-            onClick={() => setSelectedPatient(null)}
+            onClick={() => {
+              setSelectedPatient(null);
+              setVisitPickerOpen(false);
+              setSelectedVisitId('');
+              setPendingUploadVisit(null);
+            }}
             style={{ padding: '8px 16px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 8, fontSize: 14, cursor: 'pointer' }}
           >
             ← Back
           </button>
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 22, fontWeight: 800 }}>{p.name}</h2>
-            <p style={{ color: 'var(--muted)', fontSize: 13 }}>{(p.photos || []).length} photos · {p.procedure || '-'}</p>
+            <p style={{ color: 'var(--muted)', fontSize: 13 }}>{photoItems.length} photos · {visitOptions.length} visits · {p.procedure || '-'}</p>
             {isFreePlan ? (
               <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>
-                Free preview: {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} gallery patients · {(p.photos || []).length}/{FREE_GALLERY_PHOTO_LIMIT} photos for this patient
+                Free preview: {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} gallery patients · {photoItems.length}/{FREE_GALLERY_PHOTO_LIMIT} photos for this patient
               </p>
-            ) : null }
+            ) : null}
           </div>
           <input ref={fileRef} type="file" accept="image/*" multiple onChange={(e) => handleUpload(e, p)} style={{ display: 'none' }} />
           {(() => {
             const uploadState = getPatientUploadState(p, patients, access?.plan);
-            const disabled = uploadingId === p.id || !uploadState.canUpload;
             return (
               <button
-                onClick={() => {
-                  if (!uploadState.canUpload) {
-                    navigate('/subscribe');
-                    return;
-                  }
-                  fileRef.current?.click();
-                }}
+                onClick={() => startAddVisit(p)}
                 disabled={uploadingId === p.id}
                 style={{
                   padding: '9px 20px',
@@ -341,117 +503,126 @@ export default function Gallery() {
                   borderRadius: 8,
                   fontSize: 14,
                   fontWeight: 700,
-                  cursor: disabled ? 'pointer' : 'pointer',
+                  cursor: 'pointer',
                   opacity: uploadingId === p.id ? 0.6 : 1,
                 }}
                 title={uploadState.helperText}
               >
-                {uploadingId === p.id ? '⏳ Uploading...' : uploadState.isUpgrade ? '🥇 Upgrade' : '📤 Upload Photos'}
+                {uploadingId === p.id ? '⏳ Uploading...' : uploadState.isUpgrade ? '🥇 Upgrade' : '🗂️ Add Visit'}
               </button>
             );
           })()}
         </div>
 
-        {(p.photos || []).length === 0 ? (
+        {visitPickerOpen && (
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16, marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>Choose visit for this upload</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>Each uploaded photo will be linked to the selected visit.</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setVisitPickerOpen(false);
+                  setSelectedVisitId('');
+                  setPendingUploadVisit(null);
+                }}
+                style={{ padding: '7px 12px', background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)', borderRadius: 10, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+            {visitOptions.length === 0 ? (
+              <div style={{ color: 'var(--muted)', fontSize: 13 }}>No visits found yet for this patient.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'center' }}>
+                <select
+                  value={selectedVisitId}
+                  onChange={(e) => {
+                    setSelectedVisitId(e.target.value);
+                    setPendingUploadVisit(visitOptions.find((option) => option.id === e.target.value) || null);
+                  }}
+                  style={filterInputStyle}
+                >
+                  {visitOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={continueVisitUpload}
+                  style={{ minHeight: 44, padding: '0 16px', borderRadius: 12, border: 'none', background: 'var(--accent)', color: '#000', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Upload photos
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {photoItems.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '40vh', color: 'var(--muted)', gap: 12, background: 'var(--surface)', borderRadius: 12, border: '2px dashed var(--border)' }}>
             <div style={{ fontSize: 48 }}>📷</div>
             <p style={{ fontSize: 16 }}>No photos yet</p>
-            {(() => {
-              const uploadState = getPatientUploadState(p, patients, access?.plan);
-              return (
-                <button
-                  onClick={() => {
-                    if (!uploadState.canUpload) {
-                      navigate('/subscribe');
-                      return;
-                    }
-                    fileRef.current?.click();
-                  }}
-                  style={{
-                    padding: '10px 24px',
-                    background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'var(--accent)',
-                    color: uploadState.isUpgrade ? '#f7c766' : '#000',
-                    border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.42)' : 'none',
-                    borderRadius: 8,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {uploadState.isUpgrade ? '🥇 Upgrade to Gold' : 'Upload First Photo'}
-                </button>
-              );
-            })()}
+            <button
+              onClick={() => startAddVisit(p)}
+              style={{ padding: '10px 24px', background: 'var(--accent)', color: '#000', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+            >
+              Add first visit photos
+            </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
-            {(p.photos || []).map((url, i) => (
-              <div
-                key={i}
-                style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '1', cursor: 'pointer', background: 'var(--surface2)' }}
-                onClick={() => setLightbox({ url, patient: p, idx: i })}
-              >
-                <img src={url} alt={`Photo ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                <div
-                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0)', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0.3)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0,0,0,0)'; }}
-                />
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleDeletePhoto(p, i); }}
-                  style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                >
-                  X
-                </button>
+          <div style={{ display: 'grid', gap: 18 }}>
+            {photoGroups.map((group) => (
+              <div key={group.key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <strong style={{ fontSize: 15 }}>{group.title}</strong>
+                      {group.isLatest ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: '#000', background: 'rgba(0,212,255,0.88)', padding: '4px 8px', borderRadius: 999 }}>Cover visit</span>
+                      ) : null}
+                    </div>
+                    <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 4 }}>{group.items.length} photo{group.items.length !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+                  {group.items.map((photo) => {
+                    const globalIndex = (p.photos || []).findIndex((entry, index) => {
+                      const originalUrl = typeof entry === 'string' ? entry : entry?.url || entry?.secure_url;
+                      const originalId = typeof entry === 'string' ? `legacy_${index}` : entry?.id || `photo_${index}`;
+                      return originalUrl === photo.url && originalId === photo.id;
+                    });
+
+                    return (
+                      <div
+                        key={photo.id}
+                        style={{ position: 'relative', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', aspectRatio: '1', cursor: 'pointer', background: 'var(--surface2)' }}
+                        onClick={() => setLightbox({ url: photo.url, patient: p, idx: globalIndex })}
+                      >
+                        <img src={photo.url} alt={group.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeletePhoto(p, globalIndex);
+                          }}
+                          style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none', borderRadius: '50%', width: 28, height: 28, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          X
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             ))}
-            {(() => {
-              const uploadState = getPatientUploadState(p, patients, access?.plan);
-              return (
-                <div
-                  onClick={() => {
-                    if (!uploadState.canUpload) {
-                      navigate('/subscribe');
-                      return;
-                    }
-                    fileRef.current?.click();
-                  }}
-                  style={{
-                    borderRadius: 12,
-                    border: `2px dashed ${uploadState.isUpgrade ? 'rgba(245,158,11,0.35)' : 'var(--border)'}`,
-                    aspectRatio: '1',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    color: uploadState.isUpgrade ? '#f7c766' : 'var(--muted)',
-                    gap: 8,
-                    transition: 'all 0.2s',
-                    background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(251,191,36,0.03))' : 'transparent',
-                  }}
-                  title={uploadState.helperText}
-                >
-                  <div style={{ fontSize: 32 }}>{uploadState.isUpgrade ? '🥇' : '+'}</div>
-                  <div style={{ fontSize: 13 }}>{uploadState.isUpgrade ? 'Upgrade to add more' : 'Add Photo'}</div>
-                </div>
-              );
-            })()}
           </div>
         )}
 
         {lightbox && (
-          <div
-            onClick={() => setLightbox(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }}
-          >
-            <img src={lightbox.url} alt="" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8 }} />
-            <button
-              onClick={() => setLightbox(null)}
-              style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.15)', color: 'white', border: 'none', borderRadius: '50%', width: 44, height: 44, fontSize: 22, cursor: 'pointer' }}
-            >
-              X
-            </button>
+          <div onClick={() => setLightbox(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+            <img src={lightbox.url} alt="Preview" style={{ maxWidth: '92vw', maxHeight: '92vh', objectFit: 'contain', borderRadius: 14 }} />
           </div>
         )}
       </div>
@@ -460,42 +631,17 @@ export default function Gallery() {
 
   return (
     <div className="motionPage">
-      <div className="motionHero" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
-        <div>
-          <h1 style={{ fontSize: 26, fontWeight: 800 }}>📸 Gallery</h1>
-          <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4 }}>
-            {patientsWithPhotos.length} patients · {totalPhotos} photos
-          </p>
-          {isFreePlan ? (
-            <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>
-              Free preview: {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} gallery patients · up to {FREE_GALLERY_PHOTO_LIMIT} photos per patient
-            </p>
-          ) : null}
+      <div className="motionHero" style={{ display: 'grid', gap: 18, marginBottom: 26 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+          <StatCard label="Patients" value={patients.length} icon="👥" />
+          <StatCard label="Gallery Patients" value={galleryUsage.patientsUsed} icon="📁" />
+          <StatCard label="Total Photos" value={totalPhotos} icon="📷" />
         </div>
-      </div>
 
-      <div className="motionCard motionCardDelay1" style={{ marginBottom: 24, position: 'relative', zIndex: 12 }}>
-        {isFreePlan ? (
-          <div style={{ marginBottom: 14, background: 'linear-gradient(135deg, rgba(245,158,11,0.1), rgba(251,191,36,0.04))', border: '1px solid rgba(245,158,11,0.22)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: '#f7c766' }}>Free Gallery Preview</div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>
-                {galleryUsage.patientsUsed}/{FREE_GALLERY_PATIENT_LIMIT} patients used · up to {FREE_GALLERY_PHOTO_LIMIT} photos per patient
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/subscribe')}
-              style={{ padding: '10px 14px', borderRadius: 12, border: '1px solid rgba(245,158,11,0.34)', background: 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))', color: '#f7c766', fontWeight: 800, cursor: 'pointer' }}
-            >
-              Upgrade to Gold
-            </button>
-          </div>
-        ) : null}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative', flex: '1 1 320px', maxWidth: 520, minWidth: 260 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px', minHeight: 50 }}>
-              <Search size={17} style={{ color: 'var(--muted)', flexShrink: 0 }} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 10, alignItems: 'start' }}>
+          <div style={{ position: 'relative' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, padding: '0 14px' }}>
+              <Search size={16} color="var(--muted)" />
               <input
                 value={search}
                 onChange={(e) => {
@@ -556,44 +702,28 @@ export default function Gallery() {
         </div>
 
         {showFilters && (
-          <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <select
-              value={filters.photoMode}
-              onChange={(e) => setFilters((prev) => ({ ...prev, photoMode: e.target.value }))}
-              style={filterInputStyle}
-            >
+          <div style={{ marginTop: -4, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+            <select value={filters.photoMode} onChange={(e) => setFilters((prev) => ({ ...prev, photoMode: e.target.value }))} style={filterInputStyle}>
               <option value="all">All photos</option>
               <option value="withPhotos">With photos</option>
               <option value="withoutPhotos">Without photos</option>
             </select>
 
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
-              style={filterInputStyle}
-            >
+            <select value={filters.status} onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))} style={filterInputStyle}>
               <option value="all">All status</option>
               {statusOptions.map((status) => (
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>
 
-            <select
-              value={filters.procedure}
-              onChange={(e) => setFilters((prev) => ({ ...prev, procedure: e.target.value }))}
-              style={filterInputStyle}
-            >
+            <select value={filters.procedure} onChange={(e) => setFilters((prev) => ({ ...prev, procedure: e.target.value }))} style={filterInputStyle}>
               <option value="all">All procedures</option>
               {procedureOptions.map((procedure) => (
                 <option key={procedure} value={procedure}>{procedure}</option>
               ))}
             </select>
 
-            <button
-              type="button"
-              onClick={clearFilters}
-              style={{ ...filterInputStyle, cursor: 'pointer', fontWeight: 600 }}
-            >
+            <button type="button" onClick={clearFilters} style={{ ...filterInputStyle, cursor: 'pointer', fontWeight: 600 }}>
               Reset filters
             </button>
           </div>
@@ -607,7 +737,7 @@ export default function Gallery() {
           </h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {filteredPatientsWithPhotos.map((p) => (
-              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} onUpgrade={() => navigate('/subscribe')} />
+              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={openPatient} onAddVisit={startAddVisit} uploadingId={uploadingId} onUpgrade={() => navigate('/subscribe')} />
             ))}
           </div>
         </div>
@@ -620,37 +750,9 @@ export default function Gallery() {
           </h3>
 
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, color: 'var(--text)', fontSize: 13, fontWeight: 600, userSelect: 'none', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={showAllPatients}
-              onChange={(e) => setShowAllPatients(e.target.checked)}
-              style={{ display: 'none' }}
-            />
-            <span
-              style={{
-                width: 46,
-                height: 26,
-                borderRadius: 999,
-                background: showAllPatients ? 'rgba(0,212,255,0.28)' : 'rgba(255,255,255,0.09)',
-                border: `1px solid ${showAllPatients ? 'rgba(0,212,255,0.45)' : 'var(--border)'}`,
-                position: 'relative',
-                transition: 'all 0.2s ease',
-                flexShrink: 0,
-              }}
-            >
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 2,
-                  left: showAllPatients ? 22 : 2,
-                  width: 20,
-                  height: 20,
-                  borderRadius: '50%',
-                  background: showAllPatients ? 'var(--accent)' : 'rgba(255,255,255,0.75)',
-                  transition: 'all 0.2s ease',
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.25)',
-                }}
-              />
+            <input type="checkbox" checked={showAllPatients} onChange={(e) => setShowAllPatients(e.target.checked)} style={{ display: 'none' }} />
+            <span style={{ width: 46, height: 26, borderRadius: 999, background: showAllPatients ? 'rgba(0,212,255,0.28)' : 'rgba(255,255,255,0.09)', border: `1px solid ${showAllPatients ? 'rgba(0,212,255,0.45)' : 'var(--border)'}`, position: 'relative', transition: 'all 0.2s ease', flexShrink: 0 }}>
+              <span style={{ position: 'absolute', top: 2, left: showAllPatients ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: showAllPatients ? 'var(--accent)' : 'rgba(255,255,255,0.75)', transition: 'all 0.2s ease', boxShadow: '0 4px 10px rgba(0,0,0,0.25)' }} />
             </span>
             <span>{showAllPatients ? 'Show all patients' : 'Hide all patients'}</span>
           </label>
@@ -665,7 +767,7 @@ export default function Gallery() {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
             {filteredPatients.map((p) => (
-              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={setSelectedPatient} onUpload={handleUpload} uploadingId={uploadingId} fileRefs={fileRefs} onUpgrade={() => navigate('/subscribe')} />
+              <PatientCard key={p.id} p={p} patients={patients} plan={access?.plan} onSelect={openPatient} onAddVisit={startAddVisit} uploadingId={uploadingId} onUpgrade={() => navigate('/subscribe')} />
             ))}
           </div>
         )}
@@ -674,15 +776,23 @@ export default function Gallery() {
   );
 }
 
-function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileRefs, onUpgrade }) {
-  const photos = p.photos || [];
+function PatientCard({ p, patients, plan, onSelect, onAddVisit, uploadingId, onUpgrade }) {
+  const photos = getPhotoItems(p);
+  const coverPhotos = getCoverPhotos(p);
   const uploadState = getPatientUploadState(p, patients, plan);
+  const latestVisit = getLatestVisitOption(p);
 
   return (
     <div
       style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', transition: 'border-color 0.2s,transform 0.2s', cursor: 'pointer' }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0,212,255,0.4)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(0,212,255,0.4)';
+        e.currentTarget.style.transform = 'translateY(-2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--border)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
     >
       <div onClick={() => onSelect(p)} style={{ aspectRatio: '16/9', background: 'var(--surface2)', position: 'relative', overflow: 'hidden' }}>
         {photos.length === 0 ? (
@@ -690,22 +800,28 @@ function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileR
             <div style={{ fontSize: 32 }}>📷</div>
             <div style={{ fontSize: 12 }}>No photos</div>
           </div>
-        ) : photos.length === 1 ? (
-          <img src={photos[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : coverPhotos.length === 1 ? (
+          <img src={coverPhotos[0].url} alt="cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', gap: 1 }}>
-            {photos.slice(0, 4).map((url, i) => (
-              <div key={i} style={{ overflow: 'hidden', position: 'relative' }}>
-                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                {i === 3 && photos.length > 4 && (
+            {coverPhotos.slice(0, 4).map((photo, i) => (
+              <div key={photo.id || i} style={{ overflow: 'hidden', position: 'relative' }}>
+                <img src={photo.url} alt="cover" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {i === 3 && coverPhotos.length > 4 && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18, fontWeight: 700 }}>
-                    +{photos.length - 4}
+                    +{coverPhotos.length - 4}
                   </div>
                 )}
               </div>
             ))}
           </div>
         )}
+
+        {latestVisit ? (
+          <div style={{ position: 'absolute', left: 10, bottom: 10, right: 10, background: 'rgba(0,0,0,0.58)', color: '#fff', borderRadius: 10, padding: '7px 9px', fontSize: 11, fontWeight: 600, backdropFilter: 'blur(6px)' }}>
+            Cover: latest visit
+          </div>
+        ) : null}
       </div>
 
       <div style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '34px minmax(0, 1fr) auto', alignItems: 'center', gap: 10 }}>
@@ -717,7 +833,7 @@ function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileR
           <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', lineHeight: 1.4 }}>
             <span style={{ whiteSpace: 'nowrap' }}>{photos.length} photo{photos.length !== 1 ? 's' : ''}</span>
             <span style={{ opacity: 0.5 }}>•</span>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, maxWidth: '100%' }}>{p.procedure || '-'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, maxWidth: '100%' }}>{latestVisit?.label || p.procedure || '-'}</span>
           </div>
           {plan === 'free' ? (
             <div style={{ fontSize: 11, color: uploadState.isUpgrade ? '#f7c766' : 'var(--muted)', marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -725,15 +841,17 @@ function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileR
             </div>
           ) : null}
         </div>
-        <div>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            ref={(el) => { fileRefs.current[p.id] = el; }}
-            onChange={(e) => onUpload(e, p)}
-            style={{ display: 'none' }}
-          />
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(p);
+            }}
+            title="Open patient file"
+            style={{ width: 40, height: 36, background: 'rgba(255,255,255,0.04)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+          >
+            <FolderOpen size={16} />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -741,31 +859,26 @@ function PatientCard({ p, patients, plan, onSelect, onUpload, uploadingId, fileR
                 onUpgrade?.();
                 return;
               }
-              fileRefs.current[p.id]?.click();
+              onAddVisit?.(p);
             }}
             disabled={uploadingId === p.id}
             title={uploadState.helperText}
-            style={{
-              width: 44,
-              height: 36,
-              background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'rgba(0,212,255,0.1)',
-              color: uploadState.isUpgrade ? '#f7c766' : 'var(--accent)',
-              border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.36)' : '1px solid rgba(0,212,255,0.3)',
-              borderRadius: 10,
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: 'pointer',
-              opacity: uploadingId === p.id ? 0.5 : 1,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
+            style={{ width: 44, height: 36, background: uploadState.isUpgrade ? 'linear-gradient(135deg, rgba(245,158,11,0.22), rgba(251,191,36,0.16))' : 'rgba(0,212,255,0.1)', color: uploadState.isUpgrade ? '#f7c766' : 'var(--accent)', border: uploadState.isUpgrade ? '1px solid rgba(245,158,11,0.36)' : '1px solid rgba(0,212,255,0.3)', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: uploadingId === p.id ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
           >
-            {uploadingId === p.id ? '⏳' : uploadState.isUpgrade ? '🥇' : '📤'}
+            {uploadingId === p.id ? '⏳' : uploadState.isUpgrade ? '🥇' : <Images size={16} />}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }) {
+  return (
+    <div className="motionCard" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16, padding: 16 }}>
+      <div style={{ fontSize: 22, marginBottom: 8 }}>{icon}</div>
+      <div style={{ fontSize: 24, fontWeight: 800 }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 4 }}>{label}</div>
     </div>
   );
 }
