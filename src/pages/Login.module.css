@@ -60,11 +60,12 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) 430px;
+  grid-template-columns: 430px minmax(0, 1.2fr);
   gap: 40px;
   width: 100%;
   max-width: 1180px;
   align-items: center;
+  justify-content: center;
 }
 
 .brandSide {
@@ -282,6 +283,8 @@
 @media (max-width: 920px) {
   .layout {
     grid-template-columns: 1fr;
+    gap: 24px;
+    align-items: start;
   }
 
   .brandSide {
@@ -305,6 +308,16 @@
 @media (max-width: 640px) {
   .wrap {
     padding: 18px;
+    align-items: flex-start;
+  }
+
+  .layout {
+    gap: 20px;
+  }
+
+  .card {
+    padding: 30px 22px;
+    border-radius: 26px;
   }
 
   .brandTop {
@@ -317,11 +330,6 @@
 
   .heroHeading {
     font-size: 30px;
-  }
-
-  .card {
-    padding: 30px 22px;
-    border-radius: 26px;
   }
 
   .statsRow {
