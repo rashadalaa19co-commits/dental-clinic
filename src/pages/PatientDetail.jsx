@@ -239,7 +239,7 @@ export default function PatientDetail() {
     ['Type', patient.patientType],
     ['Complaint', patient.chiefComplaint],
     ['Tooth', patient.tooth],
-    ['Procedure', patient.procedure],
+    ['Last Treatment', patient.lastProcedure],
     ['Start', patient.dateStart],
     ['Alert', patient.alert],
     ['Sex', patient.sex || patient.Sex || patient.difficulty],
@@ -254,6 +254,7 @@ export default function PatientDetail() {
 
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
   const pastAppts = patientAppts.filter(a => !a.datetime || !isAfter(parseISO(a.datetime), new Date()));
+  const treatmentTimeline = [...(patient.treatments || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
 
   return (
     <div className="motionPage">
@@ -272,6 +273,21 @@ export default function PatientDetail() {
         <div className={styles.headerActions}>
           <button className={styles.editBtn} onClick={() => nav(`/patients/${id}/edit`)}>Edit</button>
           <button className={styles.delBtn} onClick={handleDelete}>Delete</button>
+        </div>
+      </div>
+
+      <div className={styles.quickStats}>
+        <div className={styles.quickCard}>
+          <span>Last Treatment</span>
+          <strong>{patient.lastProcedure || 'None'}</strong>
+        </div>
+        <div className={styles.quickCard}>
+          <span>Total Treatments</span>
+          <strong>{patient.totalTreatments || 0}</strong>
+        </div>
+        <div className={styles.quickCard}>
+          <span>Treated Teeth</span>
+          <strong>{(patient.treatedTeeth || []).join(', ') || 'None'}</strong>
         </div>
       </div>
 
@@ -403,6 +419,25 @@ export default function PatientDetail() {
             <div className={styles.infoLabel}>Notes</div>
             <div className={styles.notesText}>{patient.notes}</div>
           </div>
+        )}
+      </div>
+
+      <div className={`card ${styles.section}`}>
+        <h3 className={styles.sectionTitle}>Treatment Timeline</h3>
+        {treatmentTimeline.length === 0 ? (
+          <p className={styles.noVisits}>No treatments yet</p>
+        ) : (
+          treatmentTimeline.map((item) => (
+            <div key={item.id} className={styles.timelineItem}>
+              <div className={styles.timelineTop}>
+                <strong>{item.type}</strong>
+                <span>{item.date || 'No date'}</span>
+              </div>
+              <div className={styles.timelineMeta}>
+                Tooth {item.tooth || '-'} • {item.status || 'Not started'}
+              </div>
+            </div>
+          ))
         )}
       </div>
 
