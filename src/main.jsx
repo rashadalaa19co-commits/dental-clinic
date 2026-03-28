@@ -32,16 +32,126 @@ function ComingSoon({ title }) {
   );
 }
 
+function AuthLoadingScreen() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'radial-gradient(circle at top, #123d6b 0%, #07111f 55%, #030814 100%)',
+        color: 'white',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+    >
+      <style>{`
+        @keyframes pulseLogo {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.95;
+          }
+          50% {
+            transform: scale(1.06);
+            opacity: 1;
+          }
+        }
+
+        @keyframes starFloat {
+          0%, 100% {
+            transform: translateY(0px) scale(1);
+            opacity: 0.45;
+          }
+          50% {
+            transform: translateY(-8px) scale(1.18);
+            opacity: 1;
+          }
+        }
+      `}</style>
+
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
+        <img
+          src="/icon-192.png"
+          alt="AuraDent"
+          style={{
+            width: 88,
+            height: 88,
+            borderRadius: 22,
+            animation: 'pulseLogo 1.8s ease-in-out infinite',
+            boxShadow: '0 0 30px rgba(0, 183, 255, 0.18)'
+          }}
+        />
+
+        <span
+          style={{
+            position: 'absolute',
+            top: -14,
+            left: -10,
+            fontSize: 16,
+            animation: 'starFloat 1.6s ease-in-out infinite'
+          }}
+        >
+          ✨
+        </span>
+
+        <span
+          style={{
+            position: 'absolute',
+            top: -10,
+            right: -12,
+            fontSize: 13,
+            animation: 'starFloat 1.85s ease-in-out infinite 0.25s'
+          }}
+        >
+          ✦
+        </span>
+
+        <span
+          style={{
+            position: 'absolute',
+            bottom: 10,
+            right: -16,
+            fontSize: 11,
+            animation: 'starFloat 2s ease-in-out infinite 0.5s'
+          }}
+        >
+          ✨
+        </span>
+      </div>
+
+      <div
+        style={{
+          marginTop: 18,
+          fontSize: 15,
+          color: 'rgba(255,255,255,0.72)',
+          letterSpacing: '0.3px'
+        }}
+      >
+        Loading your clinic data...
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
-  if (user === undefined) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'white'}}>Loading...</div>;
+  if (user === undefined) return <AuthLoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function LoginRoute() {
   const { user } = useAuth();
-  if (user === undefined) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',color:'white'}}>Loading...</div>;
+  if (user === undefined) return <AuthLoadingScreen />;
   if (user) return <Navigate to="/" replace />;
   return <Login />;
 }
