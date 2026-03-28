@@ -81,30 +81,26 @@ function normalizeSex(patient) {
 }
 
 function getProcedureLabel(patient) {
-  const procedure = String(patient?.procedure || '').trim().toLowerCase();
-  if (patient?.endoVisits?.length || procedure.includes('endo') || procedure.includes('rct')) return 'endo';
-  if (patient?.operativeVisits?.length || procedure.includes('operative') || procedure.includes('filling') || procedure.includes('restoration')) return 'operative';
-  if (patient?.surgeryVisits?.length || procedure.includes('surgery') || procedure.includes('surgical') || procedure.includes('extraction')) return 'surgery';
-  if (patient?.prothVisits?.length || procedure.includes('proth') || procedure.includes('fixed') || procedure.includes('crown') || procedure.includes('bridge') || procedure.includes('denture')) return 'proth';
+  const treatments = patient?.treatments || [];
+
+  if (treatments.some((t) => t.type === 'Endo')) return 'endo';
+  if (treatments.some((t) => t.type === 'Operative')) return 'operative';
+  if (treatments.some((t) => t.type === 'Surgery')) return 'surgery';
+  if (treatments.some((t) => t.type === 'Fixed')) return 'proth';
+
   return 'general';
 }
 
 function getVisitCounts(patient) {
-  const endo = Array.isArray(patient?.endoVisits) ? patient.endoVisits.length : 0;
-  const operative = Array.isArray(patient?.operativeVisits) ? patient.operativeVisits.length : 0;
-  const surgery = Array.isArray(patient?.surgeryVisits) ? patient.surgeryVisits.length : 0;
-  const proth = Array.isArray(patient?.prothVisits) ? patient.prothVisits.length : 0;
-
-  if (endo || operative || surgery || proth) {
-    return { endo, operative, surgery, proth, general: 0 };
-  }
+  const treatments = patient?.treatments || [];
 
   return {
-    endo: getProcedureLabel(patient) === 'endo' ? 1 : 0,
-    operative: getProcedureLabel(patient) === 'operative' ? 1 : 0,
-    surgery: getProcedureLabel(patient) === 'surgery' ? 1 : 0,
-    proth: getProcedureLabel(patient) === 'proth' ? 1 : 0,
-    general: getProcedureLabel(patient) === 'general' ? 1 : 0,
+    endo: treatments.filter((t) => t.type === 'Endo').length,
+    operative: treatments.filter((t) => t.type === 'Operative').length,
+    surgery: treatments.filter((t) => t.type === 'Surgery').length,
+    proth: treatments.filter((t) => t.type === 'Fixed').length,
+    general: treatments.length ? 0 : 1,
+    total: treatments.length,
   };
 }
 
