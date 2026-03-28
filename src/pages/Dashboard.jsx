@@ -68,14 +68,16 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, [user]);
 
+  const allTreatments = useMemo(() => patients.flatMap((patient) => patient.treatments || []), [patients]);
+
   const stats = useMemo(
     () => ({
       total: patients.length,
-      inProgress: patients.filter((p) => p.status === 'In progress').length,
-      done: patients.filter((p) => p.status === 'Done').length,
-      notStarted: patients.filter((p) => p.status === 'Not started').length,
+      inProgress: allTreatments.filter((t) => t.status === 'In progress').length,
+      done: allTreatments.filter((t) => t.status === 'Done').length,
+      notStarted: allTreatments.filter((t) => t.status === 'Not started').length,
     }),
-    [patients]
+    [patients, allTreatments]
   );
 
   const patientsMap = useMemo(() => {
@@ -103,7 +105,9 @@ export default function Dashboard() {
   );
 
   const nextAppointment = upcomingAppts[0] || null;
-  const recent = patients.slice(0, 4);
+  const recent = [...patients]
+    .sort((a, b) => (b.totalTreatments || 0) - (a.totalTreatments || 0))
+    .slice(0, 4);
 
   const weeklyActivity = useMemo(() => {
     const days = Array.from({ length: 7 }, (_, index) => {
@@ -441,7 +445,7 @@ export default function Dashboard() {
                 <div className={styles.patientText}>
                   <div className={styles.patientName}>{p.name}</div>
                   <div className={styles.patientMeta}>
-                    {p.procedure || 'No procedure'}
+                    {p.lastProcedure || 'No treatments yet'}
                     {p.tooth ? ` · ${p.tooth}` : ''}
                   </div>
                 </div>
