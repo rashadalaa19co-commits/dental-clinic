@@ -49,7 +49,7 @@ export default function Patients() {
 
     return patients
       .filter((p) => {
-        const haystack = [p.name, p.phone, p.status, p.procedure, p.alert, p.patientType]
+        const haystack = [p.name, p.phone, p.status, p.lastProcedure, p.alert, p.patientType, ...(p.proceduresSummary || []), ...(p.treatedTeeth || [])]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -65,7 +65,9 @@ export default function Patients() {
         p.name?.toLowerCase().includes(searchValue) ||
         p.phone?.includes(searchValue) ||
         p.status?.toLowerCase().includes(searchValue) ||
-        p.procedure?.toLowerCase().includes(searchValue) ||
+        p.lastProcedure?.toLowerCase().includes(searchValue) ||
+        (p.proceduresSummary || []).some((proc) => proc?.toLowerCase().includes(searchValue)) ||
+        (p.treatedTeeth || []).some((tooth) => tooth?.toLowerCase().includes(searchValue)) ||
         p.alert?.toLowerCase().includes(searchValue) ||
         p.patientType?.toLowerCase().includes(searchValue);
 
@@ -140,7 +142,7 @@ export default function Patients() {
             <Search size={17} className={styles.searchIcon} />
             <input
               className={styles.search}
-              placeholder="Search by name, phone, procedure, alert..."
+              placeholder="Search by name, phone, treatment, tooth, alert..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -251,7 +253,7 @@ export default function Patients() {
                 </span>
                 <span className={`${styles.muted} ${styles.colPhone}`}>{p.phone || '-'}</span>
                 <span className={`${styles.muted} ${styles.colType}`}>{p.patientType || '-'}</span>
-                <span className={`${styles.muted} ${styles.colProcedure}`}>{p.procedure || '-'}</span>
+                <span className={`${styles.muted} ${styles.colProcedure}`}>{p.lastProcedure || 'No treatments yet'}</span>
                 <span className={styles.colStatus}>
                   <span className={`badge ${STATUS_BADGE[p.status] || 'badge-waiting'}`}>
                     {p.status || '-'}
