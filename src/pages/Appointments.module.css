@@ -107,6 +107,89 @@ font-weight: 700;
 margin-bottom: 16px;
 }
 
+
+.modeCard {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+margin-bottom: 16px;
+padding: 12px 14px;
+border: 1px solid var(--border);
+border-radius: 12px;
+background: rgba(255, 255, 255, 0.02);
+}
+
+.modeLabel {
+font-size: 13px;
+font-weight: 700;
+color: var(--text);
+}
+
+.modeSwitch {
+display: inline-flex;
+gap: 6px;
+padding: 4px;
+border-radius: 999px;
+background: rgba(255, 255, 255, 0.04);
+border: 1px solid var(--border);
+}
+
+.modeBtn {
+padding: 8px 14px;
+border: none;
+border-radius: 999px;
+background: transparent;
+color: var(--muted);
+font-size: 13px;
+font-weight: 700;
+cursor: pointer;
+transition: 0.18s ease;
+}
+
+.modeBtnActive {
+background: rgba(0, 212, 255, 0.12);
+color: var(--accent);
+}
+
+.patientSearchList {
+margin-top: 8px;
+display: flex;
+flex-direction: column;
+gap: 8px;
+padding: 8px;
+border: 1px solid var(--border);
+border-radius: 12px;
+background: rgba(255, 255, 255, 0.02);
+max-height: 220px;
+overflow-y: auto;
+}
+
+.patientSearchItem {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 10px;
+width: 100%;
+padding: 10px 12px;
+border: 1px solid transparent;
+border-radius: 10px;
+background: var(--surface);
+color: var(--text);
+font-size: 13px;
+cursor: pointer;
+text-align: left;
+}
+
+.patientSearchItem small {
+color: var(--muted);
+font-size: 11px;
+}
+
+.patientSearchItem:hover {
+border-color: rgba(0, 212, 255, 0.24);
+}
+
 .formGrid {
 display: grid;
 grid-template-columns: repeat(3, 1fr);
@@ -699,6 +782,19 @@ display: none;
 }
 
 @media (max-width: 560px) {
+.modeCard {
+flex-direction: column;
+align-items: stretch;
+}
+
+.modeSwitch {
+width: 100%;
+}
+
+.modeBtn {
+flex: 1;
+}
+
 .summaryGrid {
 grid-template-columns: repeat(2, minmax(0, 1fr));
 gap: 10px;
