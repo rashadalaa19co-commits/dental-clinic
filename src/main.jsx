@@ -32,7 +32,7 @@ function ComingSoon({ title }) {
   );
 }
 
-function AuthLoadingScreen() {
+function AppLoadingScreen() {
   return (
     <div
       style={{
@@ -41,7 +41,8 @@ function AuthLoadingScreen() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(circle at top, #123d6b 0%, #07111f 55%, #030814 100%)',
+        background:
+          'radial-gradient(circle at top, #123d6b 0%, #07111f 55%, #030814 100%)',
         color: 'white',
         position: 'relative',
         overflow: 'hidden'
@@ -62,10 +63,10 @@ function AuthLoadingScreen() {
         @keyframes starFloat {
           0%, 100% {
             transform: translateY(0px) scale(1);
-            opacity: 0.45;
+            opacity: 0.4;
           }
           50% {
-            transform: translateY(-8px) scale(1.18);
+            transform: translateY(-8px) scale(1.2);
             opacity: 1;
           }
         }
@@ -83,20 +84,22 @@ function AuthLoadingScreen() {
           src="/icon-192.png"
           alt="AuraDent"
           style={{
-            width: 88,
-            height: 88,
-            borderRadius: 22,
+            width: 90,
+            height: 90,
+            borderRadius: 24,
             animation: 'pulseLogo 1.8s ease-in-out infinite',
-            boxShadow: '0 0 30px rgba(0, 183, 255, 0.18)'
+            boxShadow: '0 0 35px rgba(0, 183, 255, 0.35)'
           }}
         />
 
         <span
           style={{
             position: 'absolute',
-            top: -14,
-            left: -10,
-            fontSize: 16,
+            top: -18,
+            left: -12,
+            fontSize: 18,
+            color: '#4FD8FF',
+            textShadow: '0 0 12px rgba(79, 216, 255, 0.9)',
             animation: 'starFloat 1.6s ease-in-out infinite'
           }}
         >
@@ -107,9 +110,11 @@ function AuthLoadingScreen() {
           style={{
             position: 'absolute',
             top: -10,
-            right: -12,
-            fontSize: 13,
-            animation: 'starFloat 1.85s ease-in-out infinite 0.25s'
+            right: -14,
+            fontSize: 14,
+            color: '#7BE7FF',
+            textShadow: '0 0 10px rgba(123, 231, 255, 0.9)',
+            animation: 'starFloat 1.8s ease-in-out infinite 0.3s'
           }}
         >
           ✦
@@ -118,10 +123,12 @@ function AuthLoadingScreen() {
         <span
           style={{
             position: 'absolute',
-            bottom: 10,
-            right: -16,
-            fontSize: 11,
-            animation: 'starFloat 2s ease-in-out infinite 0.5s'
+            bottom: 8,
+            right: -20,
+            fontSize: 12,
+            color: '#4FD8FF',
+            textShadow: '0 0 10px rgba(79, 216, 255, 0.9)',
+            animation: 'starFloat 1.9s ease-in-out infinite 0.6s'
           }}
         >
           ✨
@@ -144,14 +151,14 @@ function AuthLoadingScreen() {
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth();
-  if (user === undefined) return <AuthLoadingScreen />;
+  if (user === undefined) return <AppLoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
   return children;
 }
 
 function LoginRoute() {
   const { user } = useAuth();
-  if (user === undefined) return <AuthLoadingScreen />;
+  if (user === undefined) return <AppLoadingScreen />;
   if (user) return <Navigate to="/" replace />;
   return <Login />;
 }
