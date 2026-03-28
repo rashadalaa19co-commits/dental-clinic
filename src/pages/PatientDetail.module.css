@@ -106,3 +106,100 @@
 @media(max-width:768px) {
   .quickStats { grid-template-columns:1fr; }
 }
+
+
+.sectionToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.toggleIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.timelinePanel {
+  position: relative;
+  overflow: hidden;
+}
+
+.timelineHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.timelineToggleBtn {
+  padding: 6px 12px;
+  background: rgba(0, 255, 200, 0.08);
+  color: var(--accent);
+  border: 1px solid rgba(0, 255, 200, 0.22);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.timelineToggleBtn:hover {
+  transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+.timelineHint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.timelineRefresh {
+  animation: timelineGlow 550ms ease;
+}
+
+.timelineRefresh::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(0,255,200,0.08) 35%, rgba(255,255,255,0.08) 50%, rgba(0,255,200,0.08) 65%, transparent 100%);
+  transform: translateX(-120%);
+  pointer-events: none;
+  animation: timelineSweep 700ms ease;
+}
+
+@keyframes timelineGlow {
+  0% { box-shadow: 0 0 0 rgba(0,255,200,0); }
+  40% { box-shadow: 0 0 0 1px rgba(0,255,200,0.12), 0 0 22px rgba(0,255,200,0.10); }
+  100% { box-shadow: 0 0 0 rgba(0,255,200,0); }
+}
+
+@keyframes timelineSweep {
+  from { transform: translateX(-120%); }
+  to { transform: translateX(120%); }
+}
+
+@media(max-width:768px) {
+  .visitHeader {
+    flex-wrap: wrap;
+  }
+
+  .timelineHeaderRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
