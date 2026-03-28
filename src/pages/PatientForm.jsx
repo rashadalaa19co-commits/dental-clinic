@@ -159,7 +159,7 @@ export default function PatientForm() {
   const [form, setForm] = useState({
     name:'', phone:'', age:'', occupation:'',
     patientType:'', medicalHistory:[],
-    chiefComplaint:'', tooth:'', procedure:'',
+    chiefComplaint:'', tooth:'',
     status:'Not started', sex:'', alert:'None',
     dateStart:'', notes:''
   });
@@ -202,7 +202,7 @@ export default function PatientForm() {
       patientId: id,
       patientName: form.name,
       datetime: nextAppt,
-      type: form.procedure || '',
+      type: form.lastProcedure || (form.proceduresSummary || [])[0] || '',
       status: 'Scheduled'
     });
     const appts = await getAppointments(user.uid);
@@ -216,7 +216,59 @@ export default function PatientForm() {
     if (!form.patientType) return alert('Please select patient type');
     setSaving(true);
     try {
-      const data = { ...form, sex: form.sex || '', endoVisits: endoRows, operativeVisits: operativeRows, surgeryVisits: surgeryRows, prothVisits: prothRows };
+      const allTreatments = [
+        ...endoRows.map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          type: 'Endo',
+          tooth: row.toothName || '',
+          date: row.date || '',
+          status: row.status || form.status || 'Not started',
+          details: row,
+        })),
+        ...operativeRows.map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          type: 'Operative',
+          tooth: row.toothName || '',
+          date: row.date || '',
+          status: row.status || form.status || 'Not started',
+          details: row,
+        })),
+        ...surgeryRows.map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          type: 'Surgery',
+          tooth: row.toothName || row.toothNum || '',
+          date: row.date || '',
+          status: row.status || form.status || 'Not started',
+          details: row,
+        })),
+        ...prothRows.map((row) => ({
+          id: row.id || crypto.randomUUID(),
+          type: 'Fixed',
+          tooth: row.toothName || row.teeth || '',
+          date: row.date || '',
+          status: row.status || form.status || 'Not started',
+          details: row,
+        })),
+      ];
+
+      const latestTreatment = [...allTreatments]
+        .filter((t) => t.date)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))[0] || allTreatments[0];
+
+      const data = {
+        ...form,
+        sex: form.sex || '',
+        endoVisits: endoRows,
+        operativeVisits: operativeRows,
+        surgeryVisits: surgeryRows,
+        prothVisits: prothRows,
+        treatments: allTreatments,
+        lastProcedure: latestTreatment?.type || '',
+        treatedTeeth: [...new Set(allTreatments.map((t) => t.tooth).filter(Boolean))],
+        proceduresSummary: [...new Set(allTreatments.map((t) => t.type).filter(Boolean))],
+        totalTreatments: allTreatments.length,
+      };
+      delete data.procedure;
       delete data.Sex;
       delete data.difficulty;
       if (isEdit) {
@@ -261,13 +313,6 @@ export default function PatientForm() {
           <div className={styles.field}><label>Occupation</label><input value={form.occupation} onChange={e=>set('occupation',e.target.value)} placeholder="Occupation"/></div>
           <div className={styles.field}><label>Chief Complaint</label><input value={form.chiefComplaint} onChange={e=>set('chiefComplaint',e.target.value)} placeholder="Chief complaint"/></div>
           <div className={styles.field}><label>Tooth</label><input value={form.tooth} onChange={e=>set('tooth',e.target.value)} placeholder="Tooth number"/></div>
-          <div className={styles.field}>
-            <label>Procedure</label>
-            <select value={form.procedure} onChange={e=>set('procedure',e.target.value)}>
-              <option value="">Select...</option>
-              {['Endo','Operative','Surgery','Proth','Scaling','Other'].map(o=><option key={o}>{o}</option>)}
-            </select>
-          </div>
           <div className={styles.field}>
             <label>Status</label>
             <select value={form.status} onChange={e=>set('status',e.target.value)}>
