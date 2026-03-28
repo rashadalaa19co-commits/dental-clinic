@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { checkAccess, getAppointments, addAppointment, updateAppointment, deleteAppointment, getPatients } from '../services/db';
+import { checkAccess, getAppointments, addAppointment, updateAppointment, deleteAppointment, getPatients, addPatient } from '../services/db';
 import { format, isToday, isTomorrow, parseISO, isAfter, startOfDay, differenceInMinutes, compareAsc, addDays } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import styles from './Appointments.module.css';
 
 const STATUS_OPTIONS = ['Scheduled', 'Confirmed', 'Done', 'Cancelled', 'No Show'];
 const TYPE_OPTIONS = ['Endo', 'Operative', 'Surgery', 'Proth', 'Scaling', 'Consultation', 'Follow Up', 'Other'];
+const emptyForm = {
+  patientName: '',
+  patientId: '',
+  patientPhone: '',
+  datetime: '',
+  type: '',
+  status: 'Scheduled',
+  notes: '',
+};
 
 const normalizePhone = (phone = '') => {
   const digits = String(phone).replace(/\D/g, '');
@@ -16,7 +25,9 @@ const normalizePhone = (phone = '') => {
   return digits;
 };
 
-function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, onWhatsApp, patientQuery, setPatientQuery }) {
+const normalizeName = (name = '') => String(name || '').trim().toLowerCase();
+
+function PatientFolder({ pf, nav, onEdit, onDelete, onStatus, onWhatsApp }) {
   const [open, setOpen] = useState(false);
   const upcoming = pf.appts.filter((a) => a.datetime && isAfter(parseISO(a.datetime), new Date())).length;
   const past = pf.appts.length - upcoming;
@@ -83,7 +94,8 @@ export default function Appointments() {
   const [access, setAccess] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingAppt, setEditingAppt] = useState(null);
-  const [form, setForm] = useState({ patientName: '', patientId: '', datetime: '', type: '', status: 'Scheduled', notes: '' });
+  const [patientMode, setPatientMode] = useState('existing');
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('upcoming');
   const [conflict, setConflict] = useState(null);
@@ -114,9 +126,49 @@ export default function Appointments() {
     return map;
   }, [patients]);
 
+  const matchingExistingPatients = useMemo(() => {
+    const search = normalizeName(form.patientName);
+    if (!search || patientMode !== 'existing') return [];
+
+    return patients
+      .filter((p) => {
+        const name = normalizeName(p.name);
+        const phone = String(p.phone || '');
+        return name.includes(search) || phone.includes(form.patientName.trim());
+      })
+      .slice(0, 6);
+  }, [patients, form.patientName, patientMode]);
+
+  const findExistingPatient = (name, phone = '') => {
+    const normalizedName = normalizeName(name);
+    const normalizedPhone = normalizePhone(phone);
+
+    return patients.find((p) => {
+      const samePhone = normalizedPhone && normalizePhone(p.phone || '') === normalizedPhone;
+      const sameName = normalizedName && normalizeName(p.name) === normalizedName;
+      return samePhone || sameName;
+    });
+  };
+
   const selectPatient = (pid) => {
     const p = patients.find((x) => x.id === pid);
-    setForm((f) => ({ ...f, patientId: pid, patientName: p?.name || '' }));
+    setForm((f) => ({
+      ...f,
+      patientId: pid,
+      patientName: p?.name || '',
+      patientPhone: p?.phone || f.patientPhone || '',
+    }));
+  };
+
+  const changePatientMode = (mode) => {
+    setPatientMode(mode);
+    setConflict(null);
+    setForm((f) => ({
+      ...f,
+      patientId: mode === 'new' ? '' : f.patientId,
+      patientPhone: mode === 'existing' ? '' : f.patientPhone,
+      patientName: mode === 'new' && f.patientId ? '' : f.patientName,
+    }));
   };
 
   const checkConflict = (datetime) => {
@@ -137,23 +189,113 @@ export default function Appointments() {
     setConflict(checkConflict(datetime));
   };
 
+  const buildPatientPayload = () => ({
+    name: form.patientName.trim(),
+    phone: form.patientPhone.trim(),
+    age: '',
+    occupation: '',
+    patientType: '',
+    medicalHistory: [],
+    chiefComplaint: '',
+    tooth: '',
+    status: 'Not started',
+    sex: '',
+    alert: 'None',
+    dateStart: form.datetime || '',
+    notes: '',
+    endoVisits: [],
+    operativeVisits: [],
+    surgeryVisits: [],
+    prothVisits: [],
+  });
+
+  const resolvePatientForSave = async () => {
+    if (patientMode === 'existing') {
+      if (form.patientId) {
+        const selected = patientsMap.get(form.patientId);
+        return {
+          patientId: form.patientId,
+          patientName: selected?.name || form.patientName.trim(),
+          phone: selected?.phone || '',
+        };
+      }
+
+      const matched = findExistingPatient(form.patientName);
+      if (!matched) {
+        throw new Error('PATIENT_NOT_FOUND');
+      }
+
+      return {
+        patientId: matched.id,
+        patientName: matched.name || form.patientName.trim(),
+        phone: matched.phone || '',
+      };
+    }
+
+    const matched = findExistingPatient(form.patientName, form.patientPhone);
+    if (matched) {
+      return {
+        patientId: matched.id,
+        patientName: matched.name || form.patientName.trim(),
+        phone: matched.phone || form.patientPhone.trim(),
+      };
+    }
+
+    const newPatientRef = await addPatient(user.uid, buildPatientPayload());
+    return {
+      patientId: newPatientRef.id,
+      patientName: form.patientName.trim(),
+      phone: form.patientPhone.trim(),
+    };
+  };
+
   const handleSave = async (force = false) => {
-    if (!form.patientName || !form.datetime) return alert('Please fill patient and date/time');
+    const cleanName = form.patientName.trim();
+    const cleanPhone = form.patientPhone.trim();
+
+    if (!cleanName || !form.datetime) return alert('Please fill patient and date/time');
+    if (patientMode === 'new' && !cleanPhone) return alert('Please enter patient phone');
     if (!force && conflict) return;
+
     setSaving(true);
-    if (editingAppt) await updateAppointment(user.uid, editingAppt.id, form);
-    else await addAppointment(user.uid, form);
-    await load();
-    cancelForm();
-    setSaving(false);
+    try {
+      const resolvedPatient = await resolvePatientForSave();
+      const payload = {
+        ...form,
+        patientName: resolvedPatient.patientName,
+        patientId: resolvedPatient.patientId || '',
+        phone: resolvedPatient.phone || cleanPhone || '',
+      };
+
+      if (editingAppt) await updateAppointment(user.uid, editingAppt.id, payload);
+      else await addAppointment(user.uid, payload);
+
+      await load();
+      cancelForm();
+    } catch (error) {
+      if (error.message === 'PATIENT_NOT_FOUND') {
+        alert('Patient not found. Choose an existing patient from the list or switch to New patient.');
+      } else if (error.message === 'LIMIT_REACHED') {
+        alert('Free plan patient limit reached. Upgrade your plan to add a new patient file.');
+      } else {
+        alert('Something went wrong while saving the appointment.');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleEdit = (appt) => {
+    const linkedPatient = appt.patientId ? patientsMap.get(appt.patientId) : findExistingPatient(appt.patientName, appt.phone);
+    const mode = linkedPatient?.id || appt.patientId ? 'existing' : 'new';
+
     setEditingAppt(appt);
+    setPatientMode(mode);
     setForm({
-      patientName: appt.patientName,
-      patientId: appt.patientId || '',
-      datetime: appt.datetime,
+      patientName: linkedPatient?.name || appt.patientName || '',
+      patientId: linkedPatient?.id || appt.patientId || '',
+      patientPhone: linkedPatient?.phone || appt.phone || '',
+      datetime: appt.datetime || '',
       type: appt.type || '',
       status: appt.status || 'Scheduled',
       notes: appt.notes || '',
@@ -177,13 +319,14 @@ export default function Appointments() {
     setShowForm(false);
     setEditingAppt(null);
     setConflict(null);
-    setForm({ patientName: '', patientId: '', datetime: '', type: '', status: 'Scheduled', notes: '' });
+    setPatientMode('existing');
+    setForm(emptyForm);
   };
 
   const getAppointmentPhone = (appt) => {
     if (appt.phone) return normalizePhone(appt.phone);
     if (appt.patientId && patientsMap.has(appt.patientId)) return normalizePhone(patientsMap.get(appt.patientId)?.phone || '');
-    const matchedPatient = patients.find((p) => p.name?.trim()?.toLowerCase() === appt.patientName?.trim()?.toLowerCase());
+    const matchedPatient = patients.find((p) => normalizeName(p.name) === normalizeName(appt.patientName));
     return normalizePhone(matchedPatient?.phone || '');
   };
 
@@ -290,7 +433,7 @@ export default function Appointments() {
           <button className={styles.secondaryBtn} onClick={sendTodayReminders}>
             {access?.plan === 'gold' ? '💬 Send Today Reminders' : '🔒 WhatsApp Gold'}
           </button>
-          <button className={styles.addBtn} onClick={() => { setShowForm((s) => !s); setEditingAppt(null); setConflict(null); }}>
+          <button className={styles.addBtn} onClick={() => { setShowForm((s) => !s); setEditingAppt(null); setConflict(null); if (showForm) cancelForm(); }}>
             {showForm && !editingAppt ? '✕ Close' : '➕ New Appointment'}
           </button>
         </div>
@@ -306,18 +449,61 @@ export default function Appointments() {
       {showForm && (
         <div className={`card ${styles.formCard} motionCard motionCardDelay1`}>
           <h3 className={styles.formTitle}>{editingAppt ? '✏️ Edit Appointment' : '➕ New Appointment'}</h3>
+
+          <div className={styles.modeCard}>
+            <span className={styles.modeLabel}>Patient</span>
+            <div className={styles.modeSwitch}>
+              <button type="button" className={`${styles.modeBtn} ${patientMode === 'existing' ? styles.modeBtnActive : ''}`} onClick={() => changePatientMode('existing')}>
+                Existing
+              </button>
+              <button type="button" className={`${styles.modeBtn} ${patientMode === 'new' ? styles.modeBtnActive : ''}`} onClick={() => changePatientMode('new')}>
+                New
+              </button>
+            </div>
+          </div>
+
           <div className={styles.formGrid}>
-            <div className={styles.field}>
-              <label>Patient *</label>
-              <select value={form.patientId} onChange={(e) => selectPatient(e.target.value)}>
-                <option value="">Select patient...</option>
-                {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div className={styles.field}>
-              <label>Or type name</label>
-              <input value={form.patientName} onChange={(e) => set('patientName', e.target.value)} placeholder="Patient name" />
-            </div>
+            {patientMode === 'existing' ? (
+              <>
+                <div className={`${styles.field} ${styles.full}`}>
+                  <label>Type patient name *</label>
+                  <input
+                    value={form.patientName}
+                    onChange={(e) => setForm((f) => ({ ...f, patientName: e.target.value, patientId: '' }))}
+                    placeholder="Search existing patient by name or phone"
+                  />
+                  {matchingExistingPatients.length > 0 && (
+                    <div className={styles.patientSearchList}>
+                      {matchingExistingPatients.map((p) => (
+                        <button key={p.id} type="button" className={styles.patientSearchItem} onClick={() => selectPatient(p.id)}>
+                          <span>{p.name}</span>
+                          <small>{p.phone || 'No phone'}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className={styles.field}>
+                  <label>Quick select</label>
+                  <select value={form.patientId} onChange={(e) => selectPatient(e.target.value)}>
+                    <option value="">Select patient...</option>
+                    {patients.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.field}>
+                  <label>New patient name *</label>
+                  <input value={form.patientName} onChange={(e) => set('patientName', e.target.value)} placeholder="Patient name" />
+                </div>
+                <div className={styles.field}>
+                  <label>Phone *</label>
+                  <input value={form.patientPhone} onChange={(e) => set('patientPhone', e.target.value)} placeholder="01xxxxxxxxx" />
+                </div>
+              </>
+            )}
+
             <div className={styles.field}>
               <label>Date & Time *</label>
               <input type="datetime-local" value={form.datetime} onChange={(e) => handleDateChange(e.target.value)} />
@@ -481,8 +667,6 @@ export default function Appointments() {
               onDelete={handleDelete}
               onStatus={handleStatus}
               onWhatsApp={sendWhatsApp}
-              patientQuery={patientQuery}
-              setPatientQuery={setPatientQuery}
             />
           ))}
         </div>
