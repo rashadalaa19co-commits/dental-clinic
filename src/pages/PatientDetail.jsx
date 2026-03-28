@@ -117,6 +117,51 @@ export default function PatientDetail() {
   const [timelineRefreshTick, setTimelineRefreshTick] = useState(0);
   const firstLoadRef = useRef(true);
 
+  const buildTreatmentsFromVisits = (patientData) => {
+    const endo = (patientData.endoVisits || []).map((row) => ({
+      id: crypto.randomUUID(),
+      type: 'Endo',
+      tooth: row.toothName || '',
+      date: row.date || '',
+      status: patientData.status || 'Not started',
+    }));
+
+    const operative = (patientData.operativeVisits || []).map((row) => ({
+      id: crypto.randomUUID(),
+      type: 'Operative',
+      tooth: row.toothName || '',
+      date: row.date || '',
+      status: patientData.status || 'Not started',
+    }));
+
+    const surgery = (patientData.surgeryVisits || []).map((row) => ({
+      id: crypto.randomUUID(),
+      type: 'Surgery',
+      tooth: row.toothName || row.toothNum || '',
+      date: row.date || '',
+      status: patientData.status || 'Not started',
+    }));
+
+    const fixed = (patientData.prothVisits || []).map((row) => ({
+      id: crypto.randomUUID(),
+      type: 'Fixed',
+      tooth: row.toothName || row.teeth || '',
+      date: row.date || '',
+      status: patientData.status || 'Not started',
+    }));
+
+    const allTreatments = [...endo, ...operative, ...surgery, ...fixed]
+      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    return {
+      treatments: allTreatments,
+      totalTreatments: allTreatments.length,
+      lastProcedure: allTreatments[0]?.type || '',
+      treatedTeeth: [...new Set(allTreatments.map((t) => t.tooth).filter(Boolean))]
+    };
+  };
+
+
   const load = async () => {
     if (!user) return;
     const [pts, appts] = await Promise.all([
@@ -162,8 +207,22 @@ export default function PatientDetail() {
 
   const saveVisits = async (type, visits) => {
     setSaving(true);
-    await updatePatient(user.uid, id, { ...patient, [type]: visits });
-    await load();
+
+    const updatedPatient = {
+      ...patient,
+      [type]: visits,
+    };
+
+    const derivedData = buildTreatmentsFromVisits(updatedPatient);
+    const finalPatient = {
+      ...updatedPatient,
+      ...derivedData,
+    };
+
+    setPatient(finalPatient);
+
+    await updatePatient(user.uid, id, finalPatient);
+
     setCollapsedSections((prev) => ({ ...prev, [type]: false }));
     setTimelineRefreshTick((prev) => prev + 1);
     setAdding(null);
