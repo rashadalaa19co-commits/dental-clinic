@@ -1,23 +1,232 @@
 .wrap {
-  min-height: 100vh; display: flex; align-items: center;
-  justify-content: center; background: var(--bg);
-  background-image: radial-gradient(circle at 30% 40%, rgba(0,212,255,0.06) 0%, transparent 50%),
-                    radial-gradient(circle at 70% 60%, rgba(124,58,237,0.06) 0%, transparent 50%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(0, 212, 255, 0.12), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.14), transparent 35%),
+    linear-gradient(135deg, #081018 0%, #101826 45%, #0f172a 100%);
 }
+
+.bgGlowOne,
+.bgGlowTwo {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.bgGlowOne {
+  width: 320px;
+  height: 320px;
+  background: rgba(0, 212, 255, 0.14);
+  top: -80px;
+  left: -60px;
+}
+
+.bgGlowTwo {
+  width: 360px;
+  height: 360px;
+  background: rgba(245, 158, 11, 0.12);
+  right: -80px;
+  bottom: -120px;
+}
+
+.layout {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1.1fr 420px;
+  gap: 36px;
+  width: 100%;
+  max-width: 1150px;
+  align-items: center;
+}
+
+.brandSide {
+  color: white;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 12px;
+  margin-bottom: 24px;
+}
+
+.brandLogo {
+  font-size: 68px;
+  margin-bottom: 12px;
+}
+
+.brandTitle {
+  font-size: 64px;
+  line-height: 1;
+  font-weight: 900;
+  margin-bottom: 16px;
+}
+
+.brandText {
+  max-width: 520px;
+  font-size: 20px;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.72);
+  margin-bottom: 32px;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.featureCard {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.featureCard span {
+  display: inline-flex;
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.featureCard strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.featureCard p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.65);
+}
+
 .card {
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 48px 40px; text-align: center;
-  width: 360px; max-width: 90vw;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 20px 80px rgba(0,0,0,0.35);
+  border-radius: 32px;
+  padding: 42px 34px;
+  text-align: center;
 }
-.logo { font-size: 56px; margin-bottom: 12px; }
-.title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
-.sub { color: var(--muted); font-size: 14px; margin-bottom: 32px; }
+
+.logo {
+  font-size: 62px;
+  margin-bottom: 12px;
+}
+
+.title {
+  font-size: 34px;
+  font-weight: 900;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.sub {
+  color: rgba(255,255,255,0.65);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
 .btn {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 12px 20px; background: var(--surface2);
-  border: 1px solid var(--border); border-radius: var(--radius);
-  color: var(--text); font-size: 15px; font-weight: 500;
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px 20px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06));
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  transition: all 0.25s ease;
 }
-.btn:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
-.note { margin-top: 20px; font-size: 12px; color: var(--muted); }
+
+.btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0,212,255,0.4);
+  box-shadow: 0 12px 30px rgba(0,212,255,0.12);
+  background: rgba(0,212,255,0.08);
+}
+
+.note {
+  margin-top: 18px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: rgba(255,255,255,0.55);
+}
+
+.bottomFeatures {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.bottomFeatures span {
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+}
+
+@media (max-width: 920px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .brandSide {
+    text-align: center;
+  }
+
+  .brandText {
+    margin-inline: auto;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 18px;
+  }
+
+  .brandTitle {
+    font-size: 44px;
+  }
+
+  .brandText {
+    font-size: 16px;
+  }
+
+  .card {
+    padding: 32px 22px;
+    border-radius: 24px;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+}
