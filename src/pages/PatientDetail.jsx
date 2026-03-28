@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getPatients, deletePatient, updatePatient, getAppointments, addAppointment, updateAppointment } from '../services/db';
@@ -107,6 +107,15 @@ export default function PatientDetail() {
   const [apptConflict, setApptConflict] = useState(null);
   const [editingApptId, setEditingApptId] = useState(null);
   const [editApptData, setEditApptData] = useState({});
+  const [collapsedSections, setCollapsedSections] = useState({
+    endoVisits: true,
+    operativeVisits: true,
+    surgeryVisits: true,
+    prothVisits: true,
+  });
+  const [showAllTimeline, setShowAllTimeline] = useState(false);
+  const [timelineRefreshTick, setTimelineRefreshTick] = useState(0);
+  const firstLoadRef = useRef(true);
 
   const load = async () => {
     if (!user) return;
@@ -155,6 +164,8 @@ export default function PatientDetail() {
     setSaving(true);
     await updatePatient(user.uid, id, { ...patient, [type]: visits });
     await load();
+    setCollapsedSections((prev) => ({ ...prev, [type]: false }));
+    setTimelineRefreshTick((prev) => prev + 1);
     setAdding(null);
     setEditing({ type: null, idx: null });
     setSaving(false);
@@ -187,6 +198,10 @@ export default function PatientDetail() {
     const current = [...(patient[type] || [])];
     current.splice(idx, 1);
     await saveVisits(type, current);
+  };
+
+  const toggleSection = (key) => {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleAddPhoto = async () => {
@@ -230,6 +245,15 @@ export default function PatientDetail() {
     setEditApptData({});
   };
 
+  useEffect(() => {
+    if (!patient) return;
+    if (firstLoadRef.current) {
+      firstLoadRef.current = false;
+      return;
+    }
+    setTimelineRefreshTick((prev) => prev + 1);
+  }, [patient?.id, patient?.totalTreatments, patient?.lastProcedure, JSON.stringify(patient?.treatments || [])]);
+
   if (!patient) return <div className={styles.loading}>Loading...</div>;
 
   const info = [
@@ -253,8 +277,10 @@ export default function PatientDetail() {
   ];
 
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
-  const pastAppts = patientAppts.filter(a => !a.datetime || !isAfter(parseISO(a.datetime), new Date()));
-  const treatmentTimeline = [...(patient.treatments || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+  const treatmentTimeline = useMemo(() => (
+    [...(patient.treatments || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+  ), [patient.treatments]);
+  const visibleTimeline = showAllTimeline ? treatmentTimeline : treatmentTimeline.slice(0, 4);
 
   return (
     <div className="motionPage">
@@ -422,22 +448,37 @@ export default function PatientDetail() {
         )}
       </div>
 
-      <div className={`card ${styles.section}`}>
-        <h3 className={styles.sectionTitle}>Treatment Timeline</h3>
+      <div className={`card ${styles.section} ${styles.timelinePanel} ${timelineRefreshTick ? styles.timelineRefresh : ''}`} key={`timeline-${timelineRefreshTick}`}>
+        <div className={styles.timelineHeaderRow}>
+          <h3 className={styles.sectionTitle}>Treatment Timeline</h3>
+          {treatmentTimeline.length > 4 && (
+            <button
+              className={styles.timelineToggleBtn}
+              onClick={() => setShowAllTimeline((prev) => !prev)}
+            >
+              {showAllTimeline ? 'Show less' : 'Show all'}
+            </button>
+          )}
+        </div>
         {treatmentTimeline.length === 0 ? (
           <p className={styles.noVisits}>No treatments yet</p>
         ) : (
-          treatmentTimeline.map((item) => (
-            <div key={item.id} className={styles.timelineItem}>
-              <div className={styles.timelineTop}>
-                <strong>{item.type}</strong>
-                <span>{item.date || 'No date'}</span>
+          <>
+            {visibleTimeline.map((item) => (
+              <div key={item.id} className={styles.timelineItem}>
+                <div className={styles.timelineTop}>
+                  <strong>{item.type}</strong>
+                  <span>{item.date || 'No date'}</span>
+                </div>
+                <div className={styles.timelineMeta}>
+                  Tooth {item.tooth || '-'} • {item.status || 'Not started'}
+                </div>
               </div>
-              <div className={styles.timelineMeta}>
-                Tooth {item.tooth || '-'} • {item.status || 'Not started'}
-              </div>
-            </div>
-          ))
+            ))}
+            {!showAllTimeline && treatmentTimeline.length > 4 && (
+              <div className={styles.timelineHint}>Showing latest 4 visits</div>
+            )}
+          </>
         )}
       </div>
 
@@ -446,16 +487,26 @@ export default function PatientDetail() {
         <>
           <div className={`card ${styles.visitCard}`} style={{borderLeftColor:'var(--endo)'}}>
             <div className={styles.visitHeader}>
-              <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
+              <button
+                type="button"
+                className={styles.sectionToggleBtn}
+                onClick={() => toggleSection('endoVisits')}
+                aria-expanded={!collapsedSections.endoVisits}
+              >
+                <span className={styles.toggleIcon}>{collapsedSections.endoVisits ? '▸' : '▾'}</span>
+                <span className={styles.visitLabel} style={{color:'var(--endo)'}}>🔵 Endo</span>
+              </button>
               <span className={styles.visitCount}>{(patient.endoVisits||[]).length} visit{(patient.endoVisits||[]).length !== 1 ? 's' : ''}</span>
               <button className={styles.addVisitBtn} style={{color:'var(--endo)',borderColor:'var(--endo)'}}
-                onClick={() => { setAdding(adding === 'endo' ? null : 'endo'); setEditing({type:null,idx:null}); }}>
+                onClick={() => { setAdding(adding === 'endo' ? null : 'endo'); setEditing({type:null,idx:null}); setCollapsedSections((prev) => ({ ...prev, endoVisits: false })); }}>
                 {adding === 'endo' ? 'Cancel' : '+ Add Visit'}
               </button>
             </div>
-            {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
-            {(patient.endoVisits||[]).length === 0 && adding !== 'endo' && <p className={styles.noVisits}>No endo visits yet</p>}
-            {(patient.endoVisits||[]).map((tooth,ti) => (
+            {!collapsedSections.endoVisits && (
+              <>
+                {adding === 'endo' && <EndoForm onSave={handleAddEndo} onCancel={() => setAdding(null)}/>}
+                {(patient.endoVisits||[]).length === 0 && adding !== 'endo' && <p className={styles.noVisits}>No endo visits yet</p>}
+                {(patient.endoVisits||[]).map((tooth,ti) => (
               <div key={ti} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
                 {editing.type === 'endoVisits' && editing.idx === ti ? (
                   <EndoForm initial={tooth} onSave={handleEditEndo} onCancel={() => setEditing({type:null,idx:null})}/>
@@ -494,7 +545,9 @@ export default function PatientDetail() {
                   </>
                 )}
               </div>
-            ))}
+                ))}
+              </>
+            )}
           </div>
 
           {visitConfigs.map(cfg => {
@@ -502,18 +555,28 @@ export default function PatientDetail() {
             return (
               <div key={cfg.key} className={`card ${styles.visitCard}`} style={{borderLeftColor:cfg.color}}>
                 <div className={styles.visitHeader}>
-                  <span className={styles.visitLabel} style={{color:cfg.color}}>{cfg.label}</span>
+                  <button
+                    type="button"
+                    className={styles.sectionToggleBtn}
+                    onClick={() => toggleSection(cfg.key)}
+                    aria-expanded={!collapsedSections[cfg.key]}
+                  >
+                    <span className={styles.toggleIcon}>{collapsedSections[cfg.key] ? '▸' : '▾'}</span>
+                    <span className={styles.visitLabel} style={{color:cfg.color}}>{cfg.label}</span>
+                  </button>
                   <span className={styles.visitCount}>{visits.length} visit{visits.length !== 1 ? 's' : ''}</span>
                   <button className={styles.addVisitBtn} style={{color:cfg.color,borderColor:cfg.color}}
-                    onClick={() => { setAdding(adding === cfg.key ? null : cfg.key); setEditing({type:null,idx:null}); }}>
+                    onClick={() => { setAdding(adding === cfg.key ? null : cfg.key); setEditing({type:null,idx:null}); setCollapsedSections((prev) => ({ ...prev, [cfg.key]: false })); }}>
                     {adding === cfg.key ? 'Cancel' : '+ Add Visit'}
                   </button>
                 </div>
-                {adding === cfg.key && (
-                  <VisitForm fields={cfg.fields} onSave={(data) => handleAddVisit(cfg.key, data)} onCancel={() => setAdding(null)}/>
-                )}
-                {visits.length === 0 && adding !== cfg.key && <p className={styles.noVisits}>No visits yet</p>}
-                {visits.map((v,i) => (
+                {!collapsedSections[cfg.key] && (
+                  <>
+                    {adding === cfg.key && (
+                      <VisitForm fields={cfg.fields} onSave={(data) => handleAddVisit(cfg.key, data)} onCancel={() => setAdding(null)}/>
+                    )}
+                    {visits.length === 0 && adding !== cfg.key && <p className={styles.noVisits}>No visits yet</p>}
+                    {visits.map((v,i) => (
                   <div key={i} style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--radius-sm)',padding:14,marginBottom:10}}>
                     {editing.type === cfg.key && editing.idx === i ? (
                       <VisitForm fields={cfg.fields} initial={v} onSave={(data) => handleEditVisit(cfg.key, data)} onCancel={() => setEditing({type:null,idx:null})}/>
@@ -534,7 +597,9 @@ export default function PatientDetail() {
                       </div>
                     )}
                   </div>
-                ))}
+                    ))}
+                  </>
+                )}
               </div>
             );
           })}
