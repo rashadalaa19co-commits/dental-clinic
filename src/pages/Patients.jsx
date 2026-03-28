@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpDown, Plus, Search, SlidersHorizontal, UserPlus } from 'lucide-react';
+import { ArrowUpDown, Download, Lock, Plus, Search, SlidersHorizontal, UserPlus } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useAuth } from '../hooks/useAuth';
-import { getPatients, deletePatient } from '../services/db';
+import { checkAccess, getPatients, deletePatient } from '../services/db';
 import styles from './Patients.module.css';
 
 const STATUS_BADGE = {
@@ -21,6 +23,209 @@ const getPatientInitials = (name = '') => {
   return parts.map((part) => part[0]?.toUpperCase()).join('');
 };
 
+const toDisplayDate = (value) => {
+  if (!value) return '—';
+
+  try {
+    if (typeof value === 'string') {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return date.toLocaleDateString('en-GB', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      }
+      return value;
+    }
+
+    if (value?.toDate) {
+      return value.toDate().toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+
+    if (typeof value?.seconds === 'number') {
+      return new Date(value.seconds * 1000).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
+  } catch {
+    return String(value);
+  }
+
+  return '—';
+};
+
+const toText = (value) => {
+  if (value === null || value === undefined) return '—';
+  if (Array.isArray(value)) return value.length ? value.filter(Boolean).join(', ') : '—';
+  const text = String(value).trim();
+  return text || '—';
+};
+
+const buildVisitRows = (rows = [], label) =>
+  (Array.isArray(rows) ? rows : []).map((row, index) => [
+    index + 1,
+    label,
+    toDisplayDate(row?.date || row?.visitDate || row?.createdAt || ''),
+    toText(row?.toothName || row?.toothNum || row?.teeth || row?.tooth || ''),
+    toText(row?.status || ''),
+    toText(
+      row?.procedure ||
+        row?.details ||
+        row?.diagnosis ||
+        row?.chiefComplaint ||
+        row?.note ||
+        row?.notes ||
+        row?.treatment ||
+        ''
+    ),
+  ]);
+
+const exportPatientsBackupPdf = (patients = [], doctorName = '') => {
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 40;
+  const exportedAt = new Date();
+  const exportStamp = exportedAt.toLocaleString('en-GB', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  const drawPageHeader = (pageIndex) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.text('AuraDent Patients Backup', marginX, 42);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Doctor: ${doctorName || 'AuraDent User'}`, marginX, 58);
+    doc.text(`Exported: ${exportStamp}`, marginX, 72);
+    doc.text(`Patients: ${patients.length}`, pageWidth - marginX, 58, { align: 'right' });
+    doc.text(`Page ${pageIndex}`, pageWidth - marginX, 72, { align: 'right' });
+
+    doc.setDrawColor(226, 191, 72);
+    doc.setLineWidth(1.2);
+    doc.line(marginX, 84, pageWidth - marginX, 84);
+  };
+
+  drawPageHeader(1);
+  let currentPage = 1;
+  let cursorY = 108;
+
+  if (!patients.length) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text('No patients found', marginX, cursorY + 8);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('There are no patient records available in this backup.', marginX, cursorY + 28);
+  }
+
+  patients.forEach((patient, index) => {
+    if (index > 0) {
+      doc.addPage();
+      currentPage += 1;
+      drawPageHeader(currentPage);
+      cursorY = 108;
+    }
+
+    doc.setFillColor(250, 246, 230);
+    doc.roundedRect(marginX, cursorY, pageWidth - marginX * 2, 34, 10, 10, 'F');
+    doc.setTextColor(104, 76, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.text(`${index + 1}. ${toText(patient.name)}`, marginX + 14, cursorY + 22);
+    doc.setTextColor(20, 20, 20);
+    cursorY += 48;
+
+    autoTable(doc, {
+      startY: cursorY,
+      theme: 'grid',
+      styles: {
+        fontSize: 9,
+        cellPadding: 6,
+        overflow: 'linebreak',
+        lineColor: [228, 229, 233],
+        lineWidth: 0.4,
+      },
+      headStyles: {
+        fillColor: [24, 30, 42],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+      },
+      columnStyles: {
+        0: { cellWidth: 120, fontStyle: 'bold' },
+        1: { cellWidth: pageWidth - marginX * 2 - 120 },
+      },
+      body: [
+        ['Phone', toText(patient.phone)],
+        ['Age', toText(patient.age)],
+        ['Sex', toText(patient.sex)],
+        ['Type', toText(patient.patientType)],
+        ['Occupation', toText(patient.occupation)],
+        ['Status', toText(patient.status)],
+        ['Alert', toText(patient.alert && patient.alert !== 'None' ? patient.alert : 'None')],
+        ['Started', toDisplayDate(patient.dateStart)],
+        ['Tooth', toText(patient.tooth)],
+        ['Last Procedure', toText(patient.lastProcedure)],
+        ['All Procedures', toText(patient.proceduresSummary)],
+        ['Treated Teeth', toText(patient.treatedTeeth)],
+        ['Chief Complaint', toText(patient.chiefComplaint)],
+        ['Medical History', toText(patient.medicalHistory)],
+        ['Notes', toText(patient.notes)],
+      ],
+    });
+
+    cursorY = doc.lastAutoTable.finalY + 14;
+
+    const visitRows = [
+      ...buildVisitRows(patient.endoVisits, 'Endo'),
+      ...buildVisitRows(patient.operativeVisits, 'Operative'),
+      ...buildVisitRows(patient.surgeryVisits, 'Surgery'),
+      ...buildVisitRows(patient.prothVisits, 'Fixed'),
+    ];
+
+    autoTable(doc, {
+      startY: cursorY,
+      theme: 'striped',
+      styles: {
+        fontSize: 8.3,
+        cellPadding: 5,
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: [226, 191, 72],
+        textColor: [35, 35, 35],
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        textColor: [45, 45, 45],
+      },
+      head: [['#', 'Visit Type', 'Date', 'Tooth', 'Status', 'Details']],
+      body: visitRows.length ? visitRows : [['—', 'No visits', '—', '—', '—', 'No visit entries recorded']],
+    });
+
+    const footerY = pageHeight - 20;
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.setTextColor(120, 120, 120);
+    doc.text('AuraDent backup export • images excluded', pageWidth / 2, footerY, { align: 'center' });
+  });
+
+  const safeDate = exportedAt.toISOString().slice(0, 10);
+  doc.save(`AuraDent-Patients-Backup-${safeDate}.pdf`);
+};
+
 export default function Patients() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -30,12 +235,18 @@ export default function Patients() {
   const [activeFilter, setActiveFilter] = useState('All');
   const [sortBy, setSortBy] = useState('recent');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [access, setAccess] = useState(null);
+  const [exportingBackup, setExportingBackup] = useState(false);
 
   const load = () => {
-    getPatients(user.uid).then((p) => {
-      setPatients(p);
-      setLoading(false);
-    });
+    if (!user?.uid) return Promise.resolve();
+
+    return Promise.all([getPatients(user.uid), checkAccess(user.uid, user)])
+      .then(([p, acc]) => {
+        setPatients(p);
+        setAccess(acc);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -43,6 +254,7 @@ export default function Patients() {
   }, [user]);
 
   const searchValue = search.trim().toLowerCase();
+  const isGoldPlan = access?.plan === 'gold';
 
   const suggestions = useMemo(() => {
     if (!searchValue) return [];
@@ -73,9 +285,7 @@ export default function Patients() {
 
       const matchesFilter =
         activeFilter === 'All' ||
-        (activeFilter === 'Urgent'
-          ? p.alert?.toLowerCase() === 'urgent'
-          : p.status === activeFilter);
+        (activeFilter === 'Urgent' ? p.alert?.toLowerCase() === 'urgent' : p.status === activeFilter);
 
       return matchesSearch && matchesFilter;
     });
@@ -90,12 +300,15 @@ export default function Patients() {
     return list;
   }, [patients, searchValue, activeFilter, sortBy]);
 
-  const counts = useMemo(() => ({
-    total: patients.length,
-    done: patients.filter((p) => p.status === 'Done').length,
-    progress: patients.filter((p) => p.status === 'In progress').length,
-    urgent: patients.filter((p) => p.alert?.toLowerCase() === 'urgent').length,
-  }), [patients]);
+  const counts = useMemo(
+    () => ({
+      total: patients.length,
+      done: patients.filter((p) => p.status === 'Done').length,
+      progress: patients.filter((p) => p.status === 'In progress').length,
+      urgent: patients.filter((p) => p.alert?.toLowerCase() === 'urgent').length,
+    }),
+    [patients]
+  );
 
   const handleDelete = async (e, id) => {
     e.stopPropagation();
@@ -107,6 +320,28 @@ export default function Patients() {
   const openPatient = (id) => {
     setShowSuggestions(false);
     nav(`/patients/${id}`);
+  };
+
+  const handleBackupExport = async () => {
+    if (!isGoldPlan) {
+      nav('/subscribe');
+      return;
+    }
+
+    if (!patients.length) {
+      alert('No patients found to export.');
+      return;
+    }
+
+    try {
+      setExportingBackup(true);
+      exportPatientsBackupPdf(patients, user?.displayName || access?.displayName || '');
+    } catch (error) {
+      console.error('Backup export failed:', error);
+      alert('Could not create the PDF backup. Please try again.');
+    } finally {
+      setExportingBackup(false);
+    }
   };
 
   return (
@@ -185,6 +420,16 @@ export default function Patients() {
               </select>
             </div>
 
+            <button
+              className={`${styles.backupBtn} ${!isGoldPlan ? styles.lockedBackupBtn : ''}`}
+              onClick={handleBackupExport}
+              title={isGoldPlan ? 'Download full patients backup PDF' : 'Gold feature'}
+              disabled={exportingBackup}
+            >
+              {isGoldPlan ? <Download size={16} /> : <Lock size={16} />}
+              {exportingBackup ? 'Preparing PDF...' : isGoldPlan ? 'Backup PDF' : 'Backup Gold'}
+            </button>
+
             <button className={styles.addBtn} onClick={() => nav('/patients/new')}>
               <UserPlus size={16} />
               Add Patient
@@ -210,6 +455,16 @@ export default function Patients() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className={styles.backupHintRow}>
+          <span className={styles.backupHintBadge}>
+            {isGoldPlan ? <Download size={13} /> : <Lock size={13} />}
+            {isGoldPlan ? 'Gold backup ready' : 'Gold only feature'}
+          </span>
+          <p className={styles.backupHintText}>
+            Download one PDF backup with all patient files and visits, without gallery photos.
+          </p>
         </div>
       </div>
 
