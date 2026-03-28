@@ -17,6 +17,9 @@ const OPERATIVE_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothClamp',l:'Clam
 const SURGERY_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'toothNum',l:'Tooth Num'},{k:'typeOfEx',l:'Type EX'},{k:'sutureType',l:'Suture'},{k:'complications',l:'Complications'},{k:'date',l:'Date',t:'date'}];
 const PROTH_FIELDS = [{k:'toothName',l:'Tooth Name'},{k:'teeth',l:'Teeth'},{k:'labStage',l:'Lab Stage'},{k:'material',l:'Material'},{k:'shade',l:'Shade'},{k:'vitality',l:'Vitality'},{k:'impression',l:'Impression'},{k:'labName',l:'Lab'},{k:'date',l:'Date',t:'date'}];
 
+const getPhotoUrl = (photo) => (typeof photo === 'string' ? photo : photo?.url || photo?.secure_url || '');
+const getPhotoLabel = (photo) => (typeof photo === 'string' ? '' : photo?.visitLabel || '');
+
 function EndoForm({ initial, onSave, onCancel }) {
   const [teeth, setTeeth] = useState(initial ? [initial] : [emptyTooth()]);
   const addTooth = () => setTeeth(t => [...t, emptyTooth()]);
@@ -688,18 +691,23 @@ export default function PatientDetail() {
         )}
         {(patient.photos||[]).length === 0 && !showAddPhoto && <p className={styles.noVisits}>No photos yet</p>}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(160px, 1fr))',gap:12,marginTop:8}}>
-          {(patient.photos||[]).map((url, i) => (
+          {(patient.photos||[]).map((photo, i) => {
+            const photoUrl = getPhotoUrl(photo);
+            const photoLabel = getPhotoLabel(photo);
+            return (
             <div key={i} style={{position:'relative',borderRadius:10,overflow:'hidden',border:'1px solid var(--border)',aspectRatio:'1'}}>
-              <img src={url} alt={'Photo '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
+              <img src={photoUrl} alt={'Photo '+(i+1)} style={{width:'100%',height:'100%',objectFit:'cover'}}
                 onError={e=>{e.target.style.display='none';e.target.nextSibling.style.display='flex';}}/>
-              <div style={{display:'none',alignItems:'center',justifyContent:'center',height:'100%',background:'var(--surface2)',color:'var(--muted)',fontSize:12,flexDirection:'column',gap:8}}>
+              <div style={{display:'none',alignItems:'center',justifyContent:'center',height:'100%',background:'var(--surface2)',color:'var(--muted)',fontSize:12,flexDirection:'column',gap:8,padding:'10px',textAlign:'center'}}>
                 <span>🔗</span>
-                <a href={url} target="_blank" style={{color:'var(--accent)',fontSize:11}}>Open Link</a>
+                {photoLabel ? <span style={{fontSize:11}}>{photoLabel}</span> : null}
+                <a href={photoUrl} target="_blank" style={{color:'var(--accent)',fontSize:11}}>Open Link</a>
               </div>
+              {photoLabel ? <div style={{position:'absolute',left:6,bottom:6,background:'rgba(0,0,0,0.7)',color:'white',borderRadius:6,padding:'3px 7px',fontSize:10,maxWidth:'70%',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{photoLabel}</div> : null}
               <button onClick={()=>handleDeletePhoto(i)} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',border:'none',borderRadius:'50%',width:24,height:24,fontSize:12,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>X</button>
-              <a href={url} target="_blank" style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',borderRadius:6,padding:'2px 8px',fontSize:11,textDecoration:'none'}}>Open</a>
+              <a href={photoUrl} target="_blank" style={{position:'absolute',bottom:6,right:6,background:'rgba(0,0,0,0.7)',color:'white',borderRadius:6,padding:'2px 8px',fontSize:11,textDecoration:'none'}}>Open</a>
             </div>
-          ))}
+          )})}
         </div>
       </div>
     </div>
