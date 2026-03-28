@@ -6,16 +6,30 @@ export default function Login() {
 
   return (
     <div className={`${styles.wrap} motionHero`}>
+      <div className={styles.gridOverlay} />
       <div className={styles.bgGlowOne} />
       <div className={styles.bgGlowTwo} />
+      <div className={styles.bgGlowThree} />
 
       <div className={styles.layout}>
         <div className={`${styles.brandSide} motionCard`}>
-          <div className={styles.badge}>Built for modern dentists</div>
-          <div className={styles.brandLogo}>🦷</div>
-          <h1 className={styles.brandTitle}>AuraDent</h1>
+          <div className={styles.badge}>Designed for growing dental clinics</div>
+
+          <div className={styles.brandTop}>
+            <div className={styles.brandLogo}>🦷</div>
+            <div>
+              <h1 className={styles.brandTitle}>AuraDent</h1>
+              <p className={styles.brandSub}>Simple. Fast. Professional.</p>
+            </div>
+          </div>
+
+          <h2 className={styles.heroHeading}>
+            Manage your clinic with less chaos and more confidence.
+          </h2>
+
           <p className={styles.brandText}>
-            Simple dental clinic management for growing practices.
+            Built for dentists who want a cleaner workflow, faster appointments,
+            organized patient files, and a more professional clinic experience.
           </p>
 
           <div className={styles.featureGrid}>
@@ -23,7 +37,7 @@ export default function Login() {
               <span>📅</span>
               <div>
                 <strong>Appointments</strong>
-                <p>Track bookings and follow-ups easily</p>
+                <p>Track bookings, reminders, and follow-ups easily</p>
               </div>
             </div>
 
@@ -31,24 +45,32 @@ export default function Login() {
               <span>👥</span>
               <div>
                 <strong>Patients</strong>
-                <p>Keep every patient file organized</p>
+                <p>Keep every patient file organized in one place</p>
               </div>
             </div>
 
             <div className={styles.featureCard}>
               <span>🖼️</span>
               <div>
-                <strong>Gallery</strong>
-                <p>Store visit photos professionally</p>
+                <strong>Visits & Gallery</strong>
+                <p>Store visit photos and treatment progress professionally</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className={`${styles.card} motionCard motionCardDelay1`}>
-          <div className={styles.logo}>🦷</div>
-          <h2 className={styles.title}>AuraDent</h2>
-          <p className={styles.sub}>Everything your clinic needs, in one place</p>
+          <div className={styles.cardGlow} />
+          <div className={styles.logoWrap}>
+            <div className={styles.logo}>🦷</div>
+          </div>
+
+          <div className={styles.cardBadge}>Trusted by modern dentists</div>
+
+          <h2 className={styles.title}>Welcome to AuraDent</h2>
+          <p className={styles.sub}>
+            Everything your clinic needs, in one clean and simple workspace.
+          </p>
 
           <button className={styles.btn} onClick={login}>
             <svg width="18" height="18" viewBox="0 0 24 24">
@@ -57,17 +79,27 @@ export default function Login() {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Sign in with Google
+            Continue with Google
           </button>
 
           <p className={styles.note}>
-            Secure sign in with your Google account. Your patient data stays private and protected.
+            Secure sign in with your Google account. Your clinic data stays private,
+            protected, and always linked to your account.
           </p>
 
-          <div className={styles.bottomFeatures}>
-            <span>Patients</span>
-            <span>Appointments</span>
-            <span>Visits & Gallery</span>
+          <div className={styles.statsRow}>
+            <div>
+              <strong>Patients</strong>
+              <span>Organized files</span>
+            </div>
+            <div>
+              <strong>Visits</strong>
+              <span>Track treatment progress</span>
+            </div>
+            <div>
+              <strong>Reminders</strong>
+              <span>Stay on top of appointments</span>
+            </div>
           </div>
         </div>
       </div>
