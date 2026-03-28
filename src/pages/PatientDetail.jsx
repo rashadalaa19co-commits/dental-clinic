@@ -254,6 +254,11 @@ export default function PatientDetail() {
     setTimelineRefreshTick((prev) => prev + 1);
   }, [patient?.id, patient?.totalTreatments, patient?.lastProcedure, JSON.stringify(patient?.treatments || [])]);
 
+  const treatmentTimeline = useMemo(() => (
+    [...(patient?.treatments || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+  ), [patient?.treatments]);
+  const visibleTimeline = showAllTimeline ? treatmentTimeline : treatmentTimeline.slice(0, 4);
+
   if (!patient) return <div className={styles.loading}>Loading...</div>;
 
   const info = [
@@ -277,10 +282,6 @@ export default function PatientDetail() {
   ];
 
   const upcomingAppts = patientAppts.filter(a => a.datetime && isAfter(parseISO(a.datetime), new Date()));
-  const treatmentTimeline = useMemo(() => (
-    [...(patient.treatments || [])].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-  ), [patient.treatments]);
-  const visibleTimeline = showAllTimeline ? treatmentTimeline : treatmentTimeline.slice(0, 4);
 
   return (
     <div className="motionPage">
