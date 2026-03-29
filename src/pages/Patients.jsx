@@ -457,15 +457,6 @@ export default function Patients() {
           </div>
         </div>
 
-        <div className={styles.backupHintRow}>
-          <span className={styles.backupHintBadge}>
-            {isGoldPlan ? <Download size={13} /> : <Lock size={13} />}
-            {isGoldPlan ? 'Gold backup ready' : 'Gold only feature'}
-          </span>
-          <p className={styles.backupHintText}>
-            Download one PDF backup with all patient files and visits, without gallery photos.
-          </p>
-        </div>
       </div>
 
       {loading ? (
