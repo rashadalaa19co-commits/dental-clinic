@@ -184,7 +184,7 @@ export default function Subscribe() {
 
   return (
     <div className={`${styles.page} motionPage`}>
-      <div className={`${styles.hero} motionHero`}>
+      <div className={`${styles.topRow} motionHero`}>
         <div className={styles.currentBox}>
           <div className={styles.currentLabel}>Current package</div>
           <div className={styles.currentValue}>{currentPackageLabel}</div>
@@ -201,21 +201,21 @@ export default function Subscribe() {
             </div>
           ) : null}
         </div>
-      </div>
 
-      <div className={`${styles.checkoutBox} motionCard motionCardDelay1`}>
-        <div className={styles.inputLabel}>Phone number for Paymob checkout</div>
-        <input
-          className={styles.phoneInput}
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="01xxxxxxxxx"
-          inputMode="tel"
-        />
-        <div className={styles.checkoutHint}>
-          Use your Egyptian mobile number. Paymob is automatic. Manual payment stays available under each paid package as a backup.
+        <div className={`${styles.checkoutBox} motionCard motionCardDelay1`}>
+          <div className={styles.inputLabel}>Phone number for Paymob checkout</div>
+          <input
+            className={styles.phoneInput}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="01xxxxxxxxx"
+            inputMode="tel"
+          />
+          <div className={styles.checkoutHint}>
+            Use your Egyptian mobile number. Paymob is automatic. Manual payment stays available under each paid package as a backup.
+          </div>
+          {error ? <div className={styles.errorBox}>{error}</div> : null}
         </div>
-        {error ? <div className={styles.errorBox}>{error}</div> : null}
       </div>
 
       <div className={`${styles.toggleWrap} motionCard motionCardDelay2`}>
