@@ -633,7 +633,6 @@ export default function Gallery() {
     <div className="motionPage">
       <div className="motionHero" style={{ display: 'grid', gap: 18, marginBottom: 26 }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-          <StatCard label="Patients" value={patients.length} icon="👥" />
           <StatCard label="Gallery Patients" value={galleryUsage.patientsUsed} icon="📁" />
           <StatCard label="Total Photos" value={totalPhotos} icon="📷" />
         </div>
