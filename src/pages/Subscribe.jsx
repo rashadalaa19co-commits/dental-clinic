@@ -185,14 +185,6 @@ export default function Subscribe() {
   return (
     <div className={`${styles.page} motionPage`}>
       <div className={`${styles.hero} motionHero`}>
-        <div>
-          <div className={styles.eyebrow}>Plans & Pricing</div>
-          <h1 className={styles.title}>Choose the plan and the duration that fit your clinic</h1>
-          <p className={styles.sub}>
-            Every plan is tied to a specific duration. Monthly, 6 months, and yearly are treated as separate subscriptions, so nobody can pay for one month and get one year.
-          </p>
-        </div>
-
         <div className={styles.currentBox}>
           <div className={styles.currentLabel}>Current package</div>
           <div className={styles.currentValue}>{currentPackageLabel}</div>
