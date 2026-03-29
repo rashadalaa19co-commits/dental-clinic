@@ -430,20 +430,10 @@ export default function Appointments() {
         </div>
 
         <div className={styles.topbarActions}>
-          <button className={styles.secondaryBtn} onClick={sendTodayReminders}>
-            {access?.plan === 'gold' ? '💬 Send Today Reminders' : '🔒 WhatsApp Gold'}
-          </button>
           <button className={styles.addBtn} onClick={() => { setShowForm((s) => !s); setEditingAppt(null); setConflict(null); if (showForm) cancelForm(); }}>
             {showForm && !editingAppt ? '✕ Close' : '➕ New Appointment'}
           </button>
         </div>
-      </div>
-
-      <div className={`${styles.summaryGrid} motionCard motionCardDelay1`}>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Today</span><strong>{todayCount}</strong><p>appointments scheduled</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Upcoming</span><strong>{summary.upcoming}</strong><p>future bookings</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Needs Reminder</span><strong>{summary.needsReminder}</strong><p>today & tomorrow</p></div>
-        <div className={styles.summaryCard}><span className={styles.summaryLabel}>Missed</span><strong>{summary.missed}</strong><p>scheduled but not done</p></div>
       </div>
 
       {showForm && (
@@ -590,7 +580,6 @@ export default function Appointments() {
               <div className={styles.gridTitle}>📅 TIMELINE</div>
               <div className={styles.panelSub}>{filtered.length} matching appointments</div>
             </div>
-            <button className={styles.panelAction} onClick={sendTodayReminders}>{access?.plan === 'gold' ? 'Send reminders' : 'Unlock WhatsApp'}</button>
           </div>
 
           {filtered.length === 0 ? (
